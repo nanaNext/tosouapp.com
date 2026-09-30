@@ -108,6 +108,15 @@ function normalizeJsonPayload(v) {
   try { return JSON.parse(String(v)); } catch { return null; }
 }
 
+// 保存済み入力から計算オプションを作る。未送信の明細は所得税を国税庁の月額表で計算し、
+// 送信済みの明細は送信時の金額が変わらないよう保存内容のまま計算する。
+function computeOptionsFor(row) {
+  const options = normalizeJsonPayload(row?.payload);
+  if (!options) return null;
+  if (row?.is_published) return options;
+  return { ...options, taxMethod: 'table' };
+}
+
 const EARNING_LABELS = new Set([
   '基礎給',
   '就業手当',
@@ -220,7 +229,7 @@ router.get('/salary/input/history', async (req, res) => {
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize);
       const chunkItems = await Promise.all(chunk.map(async (row) => {
-        const options = normalizeJsonPayload(row.payload);
+        const options = computeOptionsFor(row);
         let net = null, gross = null, deduct = null;
         try {
           const emp = await salaryService.computePayslipForUser(userId, row.month, options || null, req.tenantId || null);
@@ -361,7 +370,7 @@ router.get('/salary/preview', async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: cross-department access' });
     }
     const input = await salaryInputRepo.getByUserMonth(userId, month);
-    const options = normalizeJsonPayload(input?.payload);
+    const options = computeOptionsFor(input);
     console.log('PDF GENERATE OPTIONS KINTAI:', JSON.stringify(options?.kintai));
     const emp = await salaryService.computePayslipForUser(userId, month, options || null, req.tenantId || null);
     res.status(200).json(emp);
@@ -541,7 +550,7 @@ router.post('/salary/payslip/generate', async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: cross-department access' });
     }
     const input = await salaryInputRepo.getByUserMonth(userId, month);
-    const options = normalizeJsonPayload(input?.payload);
+    const options = computeOptionsFor(input);
     const emp = await salaryService.computePayslipForUser(userId, month, options || null, req.tenantId || null);
     try {
       emp._bankAccountParts = normalizeBankAccountParts(options?.bankAccountParts);
@@ -592,6 +601,12 @@ router.post('/salary/publish', async (req, res) => {
     if (isPublished) {
       const file = await payslipRepo.findLatestByUserMonth(userId, month);
       if (!file?.id) return res.status(404).json({ message: 'PDFが作成されていません（先にPDF作成してください）' });
+      // PDFは未送信の状態（＝月額表で所得税を計算）で作られている。送信後も同じ金額で表示されるよう、
+      // 計算方法を保存内容に記録しておく（金額の入力値そのものは変更しない）。
+      const saved = normalizeJsonPayload(input.payload);
+      if (saved && saved.taxMethod !== 'table') {
+        await salaryInputRepo.upsert({ userId, month, payload: { ...saved, taxMethod: 'table' }, updatedBy: req.user.id, tenantId: req.tenantId || null });
+      }
       try { await payslipDeliveryRepo.create({ userId, month, payslipFileId: file.id, sentBy: req.user.id }); } catch (e) { /* silently ignored */ }
       // Tạo thông báo cho nhân viên để hiển thị trong お知らせ khi có 給与明細 gửi đến.
       try {
@@ -638,7 +653,7 @@ router.get('/salary/deliveries', async (req, res) => {
     if (userId && !(await ensureSameDepartmentIfManager(req, userId))) {
       return res.status(403).json({ message: 'Forbidden: cross-department access' });
     }
-    const rows = await payslipDeliveryRepo.list({ userId, month, limit: 500 });
+    const rows = await payslipDeliveryRepo.list({ userId, month, limit: 500, tenantId: req.tenantId || null });
     const items = rows.map(r => ({
       id: r.id,
       userId: r.userId,

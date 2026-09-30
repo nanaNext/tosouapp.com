@@ -5,6 +5,7 @@ const leaveRepo = require('../leave/leave.repository');
 const env = require('../../config/env');
 const salaryRepo = require('./salary.repository');
 const expensesTax = require('../expenses/expenses.tax');
+const withholding = require('./withholding');
 const { calculatePaidLeaveEntitlement } = require('../../utils/leaveRules');
 const { resolveEmploymentStartDate } = require('../../utils/employmentDate');
 
@@ -546,10 +547,18 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
   // 年末調整還付 (Tax refund) is non-taxable, so we exclude it from the taxable income base.
   // 通勤手当の非課税相当額 (commuteTax.nonTaxableAmount) も同様に除外する — 就業手当としては
   // 全額支給するが、電車・バスの月額上限／マイカー等の距離別テーブルの範囲内は課税しない。
-  const 課税対象額 = Math.max(0, yen(支給合計 - (支給['年末調整還付'] || 0) - commuteTax.nonTaxableAmount - 社保合計額));
+  // 手入力の「非課税通勤費」も全額非課税。
+  const 課税対象額 = Math.max(0, yen(支給合計 - (支給['年末調整還付'] || 0) - (支給['非課税通勤費'] || 0) - commuteTax.nonTaxableAmount - 社保合計額));
+
+  // 所得税: 令和8年分以降は国税庁の月額表（甲欄=電算機計算の特例 / 乙欄=電算機計算）で求める。
+  // 保存済みの明細（taxMethod なし）は、送信済みの金額が変わらないよう従来の概算率のまま計算する。
+  const taxCategory = String(opts.taxCategory || user?.tax_category || 'kou') === 'otsu' ? 'otsu' : 'kou';
+  const dependents = Math.max(0, parseInt(String(opts.dependents ?? user?.dependents_count ?? 0), 10) || 0);
+  const useTaxTable = y >= 2026 && (options == null || opts.taxMethod === 'table');
   if (autoCalc && !hasIncomeTaxOverride) {
-    const calcIncomeTax = yen(課税対象額 * (conf?.tax_rate ?? env.salaryTaxRate ?? 0));
-    控除['所得税'] = calcIncomeTax;
+    控除['所得税'] = useTaxTable
+      ? withholding.computeMonthlyWithholding(課税対象額, { category: taxCategory, dependents })
+      : yen(課税対象額 * (conf?.tax_rate ?? env.salaryTaxRate ?? 0));
   }
   控除['社保合計額'] = 社保合計額;
   控除['課税対象額'] = 課税対象額;
@@ -628,6 +637,12 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
     その他,
     合計,
     支払,
+    源泉: {
+      税額表: taxCategory === 'otsu' ? '乙' : '甲',
+      扶養人数: dependents,
+      計算方法: useTaxTable ? '税額表' : '概算率',
+      社会保険料: 社保合計額
+    },
     振込口座: bankAccount,
     振込銀行: bankAccount
   };

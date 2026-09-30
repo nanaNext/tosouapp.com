@@ -369,22 +369,22 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
 
   const earnItems = [];
   const addE = (l, v) => earnItems.push({ label: l, value: v != null ? money(v) : '' });
-  addE('基礎給', earnings['基礎給'] ?? earnings['基本給（月給）']);
-  addE('就業手当', earnings['就業手当'] ?? earnings['非課税通勤費']);
+  addE('基本給（月給）', earnings['基礎給'] ?? earnings['基本給（月給）']);
+  addE('就業手当', earnings['就業手当']);
   
-  const standardE = new Set(['基礎給', '基本給（月給）', '就業手当', '非課税通勤費', '欠勤控除', '時間外手当', '残業手当', '所休出手当', '休日出勤手当', '週40超手当', '月60超手当', '法休出手当', '深夜勤手当', '夜間出勤手当']);
+  const standardE = new Set(['基礎給', '基本給（月給）', '就業手当', '欠勤控除', '時間外手当', '残業手当', '所休出手当', '休日出勤手当', '週40超手当', '月60超手当', '法休出手当', '深夜勤手当', '夜間出勤手当']);
   for (const [k, v] of Object.entries(earnings)) {
     if (!standardE.has(k) && Number(v)) addE(k, v);
   }
 
   const earnSlots = Array(42).fill(null);
   earnSlots[14] = { label: '欠勤控除', value: money(earnings['欠勤控除'] ?? 0) };
-  earnSlots[28] = { label: '時間外手当', value: money(earnings['時間外手当'] ?? earnings['残業手当'] ?? 0) };
-  earnSlots[29] = { label: '所休出手当', value: money(earnings['所休出手当'] ?? earnings['休日出勤手当'] ?? 0) };
+  earnSlots[28] = { label: '残業手当', value: money(earnings['時間外手当'] ?? earnings['残業手当'] ?? 0) };
+  earnSlots[29] = { label: '休日出勤手当', value: money(earnings['所休出手当'] ?? earnings['休日出勤手当'] ?? 0) };
   earnSlots[30] = { label: '週40超手当', value: money(earnings['週40超手当'] ?? 0) };
   earnSlots[31] = { label: '月60超手当', value: money(earnings['月60超手当'] ?? 0) };
   earnSlots[32] = { label: '法休出手当', value: money(earnings['法休出手当'] ?? 0) };
-  earnSlots[33] = { label: '深夜勤手当', value: money(earnings['深夜勤手当'] ?? earnings['夜間出勤手当'] ?? 0) };
+  earnSlots[33] = { label: '夜間出勤手当', value: money(earnings['深夜勤手当'] ?? earnings['夜間出勤手当'] ?? 0) };
 
   let eIdx = 0;
   for (const item of earnItems) {
@@ -397,16 +397,16 @@ function buildPayslipPdf({ employee, companyName, issueDate }) {
 
   const dedSlots = Array(35).fill(null);
   dedSlots[0] = { label: '健康保険', value: money(deductions['健康保険'] ?? deductions['健康保険料'] ?? 0) };
-  dedSlots[1] = { label: '介護保険', value: money(deductions['介護保険'] ?? 0) };
+  dedSlots[1] = { label: '介護保険', value: money(deductions['介護保険'] ?? deductions['介護保険料'] ?? 0) };
   dedSlots[2] = { label: '厚生年金', value: money(deductions['厚生年金'] ?? deductions['厚生年金保険'] ?? 0) };
   dedSlots[3] = { label: '雇用保険', value: money(deductions['雇用保険'] ?? deductions['雇用保険料'] ?? 0) };
   dedSlots[4] = { label: '社会保険計額', value: money(deductions['社会保険計額'] ?? deductions['社保合計額'] ?? 0) };
   dedSlots[5] = { label: '課税対象額', value: money(deductions['課税対象額'] ?? 0) };
   dedSlots[7] = { label: '所得税', value: money(deductions['所得税'] ?? 0) };
-  dedSlots[9] = { label: '公替家賃', value: money(deductions['公替家賃'] ?? deductions['立替家賃'] ?? 0) };
+  dedSlots[9] = { label: '立替家賃', value: money(deductions['公替家賃'] ?? deductions['立替家賃'] ?? 0) };
   dedSlots[10] = { label: '住民税', value: money(deductions['住民税'] ?? deductions['住民票'] ?? 0) };
 
-  const standardD = new Set(['健康保険', '健康保険料', '介護保険', '厚生年金', '厚生年金保険', '雇用保険', '雇用保険料', '社会保険計額', '社保合計額', '課税対象額', '所得税', '公替家賃', '立替家賃', '住民税', '住民票']);
+  const standardD = new Set(['健康保険', '健康保険料', '介護保険', '介護保険料', '厚生年金', '厚生年金保険', '雇用保険', '雇用保険料', '社会保険計額', '社保合計額', '課税対象額', '所得税', '公替家賃', '立替家賃', '住民税', '住民票']);
   let dIdx = 14;
   for (const [k, v] of Object.entries(deductions)) {
     if (!standardD.has(k) && Number(v)) {

@@ -60,6 +60,10 @@ async function renderMonthlyStatus(card, users, service) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
       <div class="pe-title" style="margin:0;border:none;padding:0;">月別 送信状況</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <select id="stEmp" aria-label="従業員一覧" style="height:34px;max-width:240px;padding:0 10px;border:1px solid #d0d7de;border-radius:6px;font-size:13px;">
+          <option value="">従業員一覧（${users.length}名）</option>
+          ${users.map((u) => `<option value="${escapeHtml(u.id)}">${escapeHtml(userLabel(u))}</option>`).join('')}
+        </select>
         <input type="month" id="stMonth" style="height:34px;padding:0 10px;border:1px solid #d0d7de;border-radius:6px;font-size:13px;">
         <select id="stFilter" style="height:34px;padding:0 10px;border:1px solid #d0d7de;border-radius:6px;font-size:13px;">
           <option value="all">すべて</option>
@@ -144,6 +148,11 @@ async function renderMonthlyStatus(card, users, service) {
     if (months.length) initial = months[months.length - 1];
   } catch { /* ignore */ }
   monthEl.value = initial;
+  // 従業員を選ぶと、その従業員の給与計算履歴・送信履歴の画面を開く
+  card.querySelector('#stEmp').addEventListener('change', (e) => {
+    const id = e.target.value;
+    if (id) window.location.href = withStandalone(`/admin/payroll/employees?empId=${encodeURIComponent(id)}`);
+  });
   monthEl.addEventListener('change', load);
   filterEl.addEventListener('change', draw);
   await load();
@@ -157,66 +166,10 @@ function renderEmployeeList(container, users, service) {
         <a href="/admin/payroll?standalone=1&tab=payroll_editor" style="color:#0b2c66;font-weight:600;text-decoration:none;font-size:13px;">&larr; 給与明細作成・編集へ戻る</a>
       </div>
       <div class="pe-card" id="monthlyStatusCard" style="margin-bottom:16px;"></div>
-      <div class="pe-title" style="margin:8px 0;border:none;padding:0;">従業員一覧</div>
-      <div class="pe-card" style="padding:14px 20px;margin-bottom:16px;">
-        <input type="text" id="empSearch" placeholder="社員コード・氏名で検索" autocomplete="off"
-          style="width:100%;height:38px;padding:0 12px;border:1px solid #d0d7de;border-radius:6px;font-size:14px;box-sizing:border-box;">
-      </div>
-      <div class="pe-card" style="padding:0;overflow:hidden;">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="background:#f8fafc;">
-              <th style="text-align:left;padding:10px 20px;font-size:12px;font-weight:700;color:#6a6d70;border-bottom:1px solid #edeff0;">社員コード</th>
-              <th style="text-align:left;padding:10px 20px;font-size:12px;font-weight:700;color:#6a6d70;border-bottom:1px solid #edeff0;">氏名</th>
-              <th style="border-bottom:1px solid #edeff0;"></th>
-            </tr>
-          </thead>
-          <tbody id="empTableBody"></tbody>
-        </table>
-        <div id="empEmpty" style="display:none;padding:32px 20px;text-align:center;color:#6a6d70;">該当する従業員が見つかりません。</div>
-      </div>
     </div>
   `;
 
-  const tbody = container.querySelector('#empTableBody');
-  const emptyEl = container.querySelector('#empEmpty');
-
-  const renderRows = (rows) => {
-    if (!rows.length) {
-      tbody.innerHTML = '';
-      emptyEl.style.display = 'block';
-      return;
-    }
-    emptyEl.style.display = 'none';
-    tbody.innerHTML = rows.map((u) => `
-      <tr class="emp-row" data-id="${escapeHtml(u.id)}" style="cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background-color .15s;">
-        <td style="padding:12px 20px;font-size:13px;color:#6a6d70;font-weight:600;">${escapeHtml(employeeCode(u))}</td>
-        <td style="padding:12px 20px;font-size:14px;color:#0f172a;font-weight:500;">${escapeHtml(u.username || u.email || '')}</td>
-        <td style="padding:12px 20px;text-align:right;color:#0b2c66;font-weight:600;font-size:13px;">詳細を見る &rarr;</td>
-      </tr>
-    `).join('');
-    tbody.querySelectorAll('.emp-row').forEach((row) => {
-      row.addEventListener('mouseenter', () => { row.style.background = '#f8fafc'; });
-      row.addEventListener('mouseleave', () => { row.style.background = ''; });
-      row.addEventListener('click', () => {
-        const id = row.getAttribute('data-id');
-        window.location.href = withStandalone(`/admin/payroll/employees?empId=${encodeURIComponent(id)}`);
-      });
-    });
-  };
-
-  renderRows(users);
   renderMonthlyStatus(container.querySelector('#monthlyStatusCard'), users, service);
-
-  const searchInput = container.querySelector('#empSearch');
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.trim().toLowerCase();
-    if (!q) { renderRows(users); return; }
-    renderRows(users.filter((u) => {
-      const hay = `${employeeCode(u)} ${u.username || ''} ${u.email || ''}`.toLowerCase();
-      return hay.includes(q);
-    }));
-  });
 }
 
 function renderCalcHistory(tbody, items) {
@@ -262,18 +215,24 @@ function renderDeliveryHistory(tbody, items) {
   `).join('');
 }
 
-async function renderEmployeeDetail(container, user, service) {
+const userLabel = (u) => {
+  const code = employeeCode(u);
+  return `${u.username || u.email || ''}${code ? `（${code}）` : ''}`;
+};
+
+async function renderEmployeeDetail(container, user, service, users = []) {
+  // 同じ会社の従業員をプルダウンで切り替えられるようにする（一覧に戻らなくてよい）
+  const options = users.some((u) => String(u.id) === String(user.id)) ? users : [user, ...users];
   container.innerHTML = `
     <div style="padding:24px 28px;max-width:1100px;margin:0 auto;font-family:'Noto Sans JP','Noto Sans','Yu Gothic UI','Meiryo UI','Segoe UI',system-ui,sans-serif;">
       <a href="${withStandalone('/admin/payroll/employees')}" style="color:#0b2c66;font-weight:600;text-decoration:none;font-size:13px;">&larr; 従業員一覧へ戻る</a>
 
       <div class="pe-card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:16px 0;padding:20px 24px;">
-        <div>
-          <div style="font-size:12px;color:#6a6d70;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">対象従業員</div>
-          <div style="font-size:22px;font-weight:700;color:#0f172a;margin-top:4px;">
-            ${escapeHtml(user.username || user.email || '')}
-            <span style="color:#6a6d70;font-weight:500;font-size:14px;">（${escapeHtml(employeeCode(user))}）</span>
-          </div>
+        <div style="min-width:0;flex:1 1 320px;">
+          <label for="empSwitch" style="display:block;font-size:12px;color:#6a6d70;font-weight:700;letter-spacing:.5px;">対象従業員（${options.length}名）</label>
+          <select id="empSwitch" style="margin-top:6px;width:100%;max-width:420px;height:42px;padding:0 12px;border:1px solid #d0d7de;border-radius:6px;background:#fff;font-size:16px;font-weight:700;color:#0f172a;cursor:pointer;">
+            ${options.map((u) => `<option value="${escapeHtml(u.id)}"${String(u.id) === String(user.id) ? ' selected' : ''}>${escapeHtml(userLabel(u))}</option>`).join('')}
+          </select>
         </div>
         <button type="button" id="btnGotoEditor" style="height:40px;padding:0 20px;border:none;border-radius:6px;background:#0b2c66;color:#fff;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">この従業員の給与明細を作成・編集 &rarr;</button>
       </div>
@@ -322,6 +281,12 @@ async function renderEmployeeDetail(container, user, service) {
   `;
 
   container.querySelector('#btnGotoEditor').addEventListener('click', () => goToEditorFor(user.id));
+  container.querySelector('#empSwitch').addEventListener('change', (e) => {
+    const next = options.find((u) => String(u.id) === String(e.target.value));
+    if (!next) return;
+    try { history.replaceState(null, '', withStandalone(`/admin/payroll/employees?empId=${encodeURIComponent(next.id)}`)); } catch { /* ignore */ }
+    renderEmployeeDetail(container, next, service, users);
+  });
 
   const calcBody = container.querySelector('#calcHistoryBody');
   const deliveryBody = container.querySelector('#deliveryHistoryBody');
@@ -410,7 +375,7 @@ async function mount({ content } = {}) {
   }
 
   const user = users.find((u) => String(u.id) === String(empId)) || { id: empId, username: `従業員 #${empId}` };
-  await renderEmployeeDetail(host, user, service);
+  await renderEmployeeDetail(host, user, service, users);
 }
 
 export { mount };

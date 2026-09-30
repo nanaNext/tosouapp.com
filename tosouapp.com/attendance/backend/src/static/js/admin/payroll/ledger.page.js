@@ -16,6 +16,13 @@ function updateEmployee(id, data) {
 
 const taxCategoryLabel = (v) => (String(v || 'kou') === 'otsu' ? '乙欄' : '甲欄');
 
+const fmtDateTime = (v) => {
+  const d = new Date(v);
+  if (!v || Number.isNaN(d.getTime())) return String(v || '');
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 const monthLabel = (m) => {
   const match = /^(\d{4})-(\d{2})$/.exec(String(m || ''));
   return match ? `${match[1]}年${match[2]}月分` : String(m || '');
@@ -52,9 +59,8 @@ async function deactivateEmployee(id) {
 // ---------------------------------------------------------------------------
 
 const SECTIONS = [
-  { id: 'employees', label: '従業員', icon: '\u{1F464}' },
-  { id: 'calc', label: '給与計算', icon: '\u{1F5C2}️' },
-  { id: 'payslip', label: '明細書', icon: '\u{1F4C4}' },
+  { id: 'calc', label: '給与', icon: '\u{1F5C2}️' },
+  { id: 'employees', label: '従業員情報', icon: '\u{1F464}' },
   { id: 'settings', label: '設定', icon: '⚙️' }
 ];
 
@@ -94,14 +100,14 @@ async function mount({ content } = {}) {
   };
 
   const params = new URLSearchParams(window.location.search);
-  let section = SECTIONS.some((s) => s.id === params.get('section')) ? params.get('section') : 'employees';
+  let section = SECTIONS.some((s) => s.id === params.get('section')) ? params.get('section') : 'calc';
 
   const root = document.createElement('div');
   root.className = 'pl-root';
   root.innerHTML = `
     <nav class="pl-nav">
       <div class="pl-brand">
-        <div class="t">給与元帳</div>
+        <div class="t">給与</div>
         <div class="s">${escapeHtml(config?.companyName || '')}</div>
       </div>
       <div class="pl-navlist">
@@ -151,7 +157,6 @@ async function mount({ content } = {}) {
     mainEl.innerHTML = '';
     if (section === 'employees') return renderEmployeesSection(mainEl, ctx, renderSection);
     if (section === 'calc') return renderCalcSection(mainEl, ctx);
-    if (section === 'payslip') return renderPayslipSection(mainEl, ctx);
     if (section === 'settings') return renderSettingsSection(mainEl, ctx);
   }
 
@@ -180,7 +185,7 @@ function renderEmployeesSection(mainEl, ctx, rerender) {
         <thead>
           <tr>
             <th>氏名</th><th>社員番号</th><th>部署</th>
-            <th class="num">基礎給</th><th class="num">就業手当</th><th class="num">通勤手当</th>
+            <th class="num">基本給（月給）</th><th class="num">就業手当</th><th class="num">通勤手当</th>
             <th class="center">扶養</th><th class="center">区分</th><th></th>
           </tr>
         </thead>
@@ -281,7 +286,7 @@ function openEmployeeEditModal(emp, ctx, rerender) {
             <option value="otsu" ${emp.tax_category === 'otsu' ? 'selected' : ''}>乙欄（複数勤務先など）</option>
           </select>
         </div>
-        <div class="pl-field"><label>基礎給（月額・円）*</label><input class="pl-input" id="fBase" type="number" min="0" value="${Number(emp.base_salary || 0)}"></div>
+        <div class="pl-field"><label>基本給（月給・円）*</label><input class="pl-input" id="fBase" type="number" min="0" value="${Number(emp.base_salary || 0)}"></div>
         <div class="pl-field"><label>就業手当（月額・円）</label><input class="pl-input" id="fQual" type="number" min="0" value="${Number(emp.qualification_allowance || 0)}"></div>
         <div class="pl-field"><label>通勤手当（月額・円）</label><input class="pl-input" id="fCommute" type="number" min="0" value="${Number(emp.allowance_transport || 0)}"></div>
         <div class="pl-field">
@@ -317,7 +322,7 @@ function openEmployeeEditModal(emp, ctx, rerender) {
     const username = overlay.querySelector('#fUsername').value.trim();
     const baseSalary = overlay.querySelector('#fBase').value;
     if (!username || baseSalary === '') {
-      msg.textContent = '氏名と基礎給は必須です';
+      msg.textContent = '氏名と基本給（月給）は必須です';
       return;
     }
     const btn = overlay.querySelector('#btnSave');
@@ -369,98 +374,219 @@ function monthOptions(centerMonth) {
 async function renderCalcSection(mainEl, ctx) {
   const { employees, deptName, service } = ctx;
   let month = currentMonth();
+  let rows = [];
+  let filter = 'all';
+  const selected = new Set();
+
+  // 状態: 未入力（保存なし）→ 入力済み（保存済み・未送信）→ 送信済み → 確認済み（従業員がPDFを開いた）
+  const STATUS = {
+    none: { label: '未入力', cls: 'gray' },
+    saved: { label: '入力済み', cls: 'tan' },
+    sent: { label: '送信済み', cls: 'green' }
+  };
 
   mainEl.innerHTML = `
     <div class="pl-head">
       <div>
-        <div class="pl-eyebrow">PAYROLL CALCULATION</div>
-        <h1>給与計算</h1>
-        <p>対象月を選び、各従業員の「詳細プレビュー」から勤怠・支給・控除を入力します</p>
+        <div class="pl-eyebrow">PAYROLL</div>
+        <h1>給与</h1>
+        <p>対象月の全従業員です。「開く」で入力・PDF確認・送信までできます。チェックを付けてまとめて送信もできます。</p>
       </div>
       <select class="pl-select" id="monthSel">
         ${monthOptions(month).map((m) => `<option value="${m}" ${m === month ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}
       </select>
     </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+      <div id="calcSummary" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select class="pl-select" id="calcFilter">
+          <option value="all">すべて</option>
+          <option value="none">未入力</option>
+          <option value="saved">入力済み（未送信）</option>
+          <option value="sent">送信済み</option>
+        </select>
+        <button type="button" class="pl-btn primary" id="btnBulkSend" disabled>選択した人に送信</button>
+      </div>
+    </div>
+    <div id="bulkMsg" style="font-size:12.5px;font-weight:700;margin-bottom:8px;white-space:pre-line;"></div>
     <div class="pl-card" style="overflow-x:auto;">
       <table class="pl-table">
         <thead>
           <tr>
-            <th>氏名</th><th>部署</th><th class="center">自動計算</th>
-            <th class="num">出勤日数</th><th class="num">欠勤日数</th>
+            <th class="center" style="width:34px;"><input type="checkbox" id="chkAll" aria-label="すべて選択"></th>
+            <th>社員コード</th><th>氏名</th><th>部署</th>
             <th class="num">総支給額</th><th class="num">総控除額</th><th class="num">差引支給額</th>
-            <th class="center">支払方法照合</th><th></th>
+            <th class="center">状態</th><th></th>
           </tr>
         </thead>
         <tbody id="calcBody"></tbody>
       </table>
     </div>
-    <div class="pl-note">※ 社会保険料は概算料率、所得税は簡易概算です。正式運用前に国税庁の源泉徴収税額表・社会保険料額表で必ず確認してください。「詳細プレビュー」内の金額は自動計算OFFで手入力に切り替えられます。</div>
+    <div class="pl-note">※ 所得税は国税庁の月額表（令和8年分）で自動計算します（送信済みの明細は送信時の金額のまま）。社会保険料は「設定」の料率による計算です。「開く」の中で自動計算OFFにすると手入力に切り替えられます。</div>
   `;
 
   const tbody = mainEl.querySelector('#calcBody');
+  const summaryEl = mainEl.querySelector('#calcSummary');
+  const bulkBtn = mainEl.querySelector('#btnBulkSend');
+  const bulkMsg = mainEl.querySelector('#bulkMsg');
+  const chkAll = mainEl.querySelector('#chkAll');
+
+  const statusOf = (r) => (r.input?.is_published ? 'sent' : (r.input?.payload ? 'saved' : 'none'));
+  const visibleRows = () => rows.filter((r) => r && (filter === 'all' || r.status === filter));
+
+  const drawSummary = () => {
+    const loaded = rows.filter(Boolean);
+    const count = (st) => loaded.filter((r) => r.status === st).length;
+    const read = loaded.filter((r) => r.status === 'sent' && r.delivery?.isRead).length;
+    const chip = (label, n, color, bg) => `<div style="background:${bg};color:${color};border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:800;">${label} ${n}名</div>`;
+    summaryEl.innerHTML = chip('対象', employees.length, '#1c2b45', '#eef1f5')
+      + chip('未入力', count('none'), '#6b6250', '#efece4')
+      + chip('入力済み', count('saved'), '#8a5a14', '#fdf3e1')
+      + chip('送信済み', count('sent'), '#2f6b3a', '#e3f2e6')
+      + chip('確認済み', read, '#1e3a8a', '#dbeafe');
+  };
+
+  const updateBulk = () => {
+    const n = [...selected].filter((id) => rows.some((r) => r && String(r.u.id) === id)).length;
+    bulkBtn.disabled = n === 0;
+    bulkBtn.textContent = n ? `選択した人に送信（${n}名）` : '選択した人に送信';
+    const vis = visibleRows();
+    chkAll.checked = vis.length > 0 && vis.every((r) => selected.has(String(r.u.id)));
+  };
+
+  const renderRow = (r) => {
+    const { u, emp, ok, status, delivery } = r;
+    const t = emp?.合計 || {};
+    const net = ok ? t.差引支給額 : null;
+    const paySum = ok ? Number(emp?.支払?.振込支給額 || 0) + Number(emp?.支払?.現金支給額 || 0) + Number(emp?.支払?.現物支給額 || 0) : null;
+    const mismatch = ok && net != null && Math.round(paySum) !== Math.round(net);
+    const st = STATUS[status] || STATUS.none;
+    const id = String(u.id);
+    return `
+      <tr data-id="${escapeHtml(id)}">
+        <td class="center"><input type="checkbox" class="row-chk" ${selected.has(id) ? 'checked' : ''} aria-label="${escapeHtml(u.username || '')}を選択"></td>
+        <td style="color:#6b6250;font-weight:700;">${escapeHtml(employeeCode(u))}</td>
+        <td style="font-weight:700;">${escapeHtml(u.username || u.email || '')}</td>
+        <td>${escapeHtml(deptName(u.departmentId) || '—')}</td>
+        <td class="num">${ok ? '¥' + yen(t.総支給額) : '—'}</td>
+        <td class="num">${ok ? '¥' + yen(t.総控除額) : '—'}</td>
+        <td class="num" style="font-weight:800;">${ok ? '¥' + yen(net) : '—'}${mismatch ? ' <span class="pl-badge tan" title="支払方法（振込・現金・現物）の合計が差引支給額と一致しません">支払方法</span>' : ''}</td>
+        <td class="center"><span class="pl-badge ${st.cls}">${st.label}</span>${status === 'sent' && delivery?.isRead ? ' <span class="pl-badge green" title="従業員が明細を確認しました">確認済み</span>' : ''}</td>
+        <td><button type="button" class="pl-btn btn-open">開く</button></td>
+      </tr>
+    `;
+  };
+
+  const drawRows = () => {
+    const vis = visibleRows();
+    if (!rows.some(Boolean)) return;
+    tbody.innerHTML = vis.length
+      ? vis.map(renderRow).join('')
+      : '<tr><td colspan="9" style="text-align:center;color:#9b8f72;padding:24px;">該当する従業員がいません</td></tr>';
+    tbody.querySelectorAll('.row-chk').forEach((chk) => chk.addEventListener('change', () => {
+      const id = chk.closest('tr').getAttribute('data-id');
+      if (chk.checked) selected.add(id); else selected.delete(id);
+      updateBulk();
+    }));
+    tbody.querySelectorAll('.btn-open').forEach((btn) => btn.addEventListener('click', () => {
+      const id = btn.closest('tr').getAttribute('data-id');
+      const r = rows.find((x) => x && String(x.u.id) === id);
+      if (r) openCalcPreviewModal(r.u, month, ctx, loadRows, { delivery: r.delivery });
+    }));
+    drawSummary();
+    updateBulk();
+  };
 
   const loadRows = async () => {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#9b8f72;padding:24px;">読み込み中...</td></tr>`;
+    summaryEl.innerHTML = '';
     if (!employees.length) {
       tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#9b8f72;padding:24px;">従業員がいません</td></tr>`;
       return;
     }
-    const rows = new Array(employees.length).fill(null);
+    const loadingMonth = month;
+    // 送信履歴（同じ月に複数回送信した場合は最新を採用。未確認でも過去の送信が確認済みなら確認済み）
+    const deliveries = new Map();
+    try {
+      const res = await service.listDeliveries({ month });
+      for (const it of (Array.isArray(res?.items) ? res.items : [])) {
+        const key = String(it.userId);
+        const prev = deliveries.get(key);
+        if (!prev) deliveries.set(key, { ...it });
+        else if (it.isRead) prev.isRead = true;
+      }
+    } catch { /* ignore */ }
+    rows = new Array(employees.length).fill(null);
     const BATCH = 4;
     for (let i = 0; i < employees.length; i += BATCH) {
       const batch = employees.slice(i, i + BATCH);
       const results = await Promise.all(batch.map(async (u) => {
+        const input = await service.loadInput({ userId: u.id, month }).catch(() => null);
+        const payload = input && input.payload ? input.payload : {};
+        let emp = null;
         try {
-          const input = await service.loadInput({ userId: u.id, month }).catch(() => null);
-          const payload = input && input.payload ? input.payload : {};
-          const emp = await service.computeEmp({ userId: u.id, month, payload });
-          const kintaiManual = Number(payload.kintaiVersion) === 2 && !!(payload.kintai && Object.prototype.hasOwnProperty.call(payload.kintai, '出勤日数'));
-          return { u, emp, ok: true, autoCalc: payload.autoCalcDeductions !== false, kintaiManual };
-        } catch {
-          return { u, emp: null, ok: false, autoCalc: true };
-        }
+          // プレビュー（開く）と同じ条件で計算する: 未送信は所得税を月額表で、自動計算は未保存ならON
+          emp = await service.computeEmp({ userId: u.id, month, payload: input?.is_published ? payload : { ...payload, taxMethod: 'table', autoCalcDeductions: payload.autoCalcDeductions !== false } });
+        } catch { /* keep null */ }
+        const r = { u, emp, ok: !!emp, input, delivery: deliveries.get(String(u.id)) || null };
+        r.status = statusOf(r);
+        return r;
       }));
+      if (loadingMonth !== month) return;   // 読み込み中に月が変わった
       results.forEach((r, idx) => { rows[i + idx] = r; });
-      tbody.innerHTML = rows.map((r) => r ? renderCalcRow(r, deptName) : '<tr><td colspan="9"></td></tr>').join('');
-      bindCalcRowActions(tbody, rows, ctx, month);
+      drawRows();
     }
   };
 
-  function renderCalcRow(r, deptName) {
-    const { u, emp, ok, autoCalc, kintaiManual } = r;
-    const gross = ok ? emp?.合計?.総支給額 : null;
-    const deduct = ok ? emp?.合計?.総控除額 : null;
-    const net = ok ? emp?.合計?.差引支給額 : null;
-    const paySum = ok ? Number(emp?.支払?.振込支給額 || 0) + Number(emp?.支払?.現金支給額 || 0) + Number(emp?.支払?.現物支給額 || 0) : null;
-    const match = ok && paySum != null && net != null ? Math.round(paySum) === Math.round(net) : null;
-    return `
-      <tr data-id="${escapeHtml(u.id)}">
-        <td>${escapeHtml(u.username || u.email || '')}</td>
-        <td>${escapeHtml(deptName(u.departmentId) || '—')}</td>
-        <td class="center">${autoCalc ? '<span class="pl-badge green">自動計算ON</span>' : '<span class="pl-badge tan">自動計算OFF</span>'}</td>
-        <td class="num">${ok ? Number(emp?.勤怠?.出勤日数 || 0) : '—'}${ok && kintaiManual ? ' <span class="pl-badge tan" title="詳細プレビューで保存された手入力値です（勤怠と連動していません）">手入力</span>' : ''}</td>
-        <td class="num">${ok ? Number(emp?.勤怠?.欠勤日数 || 0) : '—'}</td>
-        <td class="num">${ok ? '¥' + yen(gross) : '—'}</td>
-        <td class="num">${ok ? '¥' + yen(deduct) : '—'}</td>
-        <td class="num" style="font-weight:800;">${ok ? '¥' + yen(net) : '—'}</td>
-        <td class="center">${ok ? (match ? '<span class="pl-badge green">一致</span>' : '<span class="pl-badge tan">未設定</span>') : '—'}</td>
-        <td><button type="button" class="pl-btn btn-preview">詳細プレビュー</button></td>
-      </tr>
-    `;
-  }
+  // まとめて送信（入力済みの人だけ。PDF作成→送信を1人ずつ順番に行う）
+  bulkBtn.addEventListener('click', async () => {
+    const picked = rows.filter((r) => r && selected.has(String(r.u.id)));
+    const targets = picked.filter((r) => r.status === 'saved');
+    const skippedNone = picked.filter((r) => r.status === 'none');
+    const skippedSent = picked.filter((r) => r.status === 'sent');
+    if (!targets.length) {
+      bulkMsg.style.color = '#a13c2e';
+      bulkMsg.textContent = '送信できる人がいません（未入力の人は「開く」で保存してから、送信済みの人は再送信不要です）';
+      return;
+    }
+    const notes = [
+      skippedNone.length ? `未入力 ${skippedNone.length}名は送信しません（先に「開く」で保存してください）` : '',
+      skippedSent.length ? `送信済み ${skippedSent.length}名は対象外です` : ''
+    ].filter(Boolean).join('\n');
+    if (!window.confirm(`${monthLabel(month)}の給与明細を ${targets.length}名に送信します。\nPDFを作成して公開し、社員のマイページで見られるようになります。${notes ? '\n\n' + notes : ''}`)) return;
+    bulkBtn.disabled = true;
+    chkAll.disabled = true;
+    const failed = [];
+    let done = 0;
+    for (const r of targets) {
+      bulkMsg.style.color = '#6b6250';
+      bulkMsg.textContent = `送信中... ${done + 1} / ${targets.length}（${r.u.username || r.u.id}）`;
+      try {
+        await service.generatePayslip({ userId: r.u.id, month });
+        await service.publishPayslip({ userId: r.u.id, month, is_published: true });
+        selected.delete(String(r.u.id));
+        done++;
+      } catch (err) {
+        failed.push(`${r.u.username || r.u.id}: ${String(err?.message || '失敗しました')}`);
+      }
+    }
+    chkAll.disabled = false;
+    bulkMsg.style.color = failed.length ? '#a13c2e' : '#3f6b2c';
+    bulkMsg.textContent = `${done}名に送信しました。` + (failed.length ? `\n送信できなかった人（${failed.length}名）:\n${failed.join('\n')}` : '') + (notes ? `\n${notes}` : '');
+    await loadRows();
+  });
 
-  function bindCalcRowActions(tbody, rows, ctx, month) {
-    tbody.querySelectorAll('.btn-preview').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const id = btn.closest('tr').getAttribute('data-id');
-        const r = rows.find((x) => x && String(x.u.id) === String(id));
-        if (r) openCalcPreviewModal(r.u, month, ctx, loadRows);
-      });
-    });
-  }
-
+  chkAll.addEventListener('change', () => {
+    for (const r of visibleRows()) {
+      if (chkAll.checked) selected.add(String(r.u.id)); else selected.delete(String(r.u.id));
+    }
+    drawRows();
+  });
+  mainEl.querySelector('#calcFilter').addEventListener('change', (ev) => { filter = ev.target.value; drawRows(); });
   mainEl.querySelector('#monthSel').addEventListener('change', (ev) => {
     month = ev.target.value;
+    selected.clear();
+    bulkMsg.textContent = '';
     loadRows();
   });
 
@@ -476,7 +602,7 @@ function fieldNum(label, id, value, disabled) {
   `;
 }
 
-async function openCalcPreviewModal(user, month, ctx, onSaved) {
+async function openCalcPreviewModal(user, month, ctx, onSaved, extra = {}) {
   const { service } = ctx;
   const overlay = document.createElement('div');
   overlay.className = 'pl-overlay';
@@ -485,9 +611,26 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
   overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
 
   let input = null;
-  try { input = await service.loadInput({ userId: user.id, month }); } catch { /* ignore */ }
-  const payload = (input && input.payload && typeof input.payload === 'object') ? input.payload : {};
+  let history = null;
+  let pdfList = null;
+  [input, history, pdfList] = await Promise.all([
+    service.loadInput({ userId: user.id, month }).catch(() => null),
+    service.getInputHistory({ userId: user.id }).catch(() => null),
+    fetchJSONAuth(`/api/payslips/admin/list?userId=${encodeURIComponent(user.id)}&month=${encodeURIComponent(month)}&pageSize=100`).catch(() => null)
+  ]);
+  // この月に作成済みのPDF（いちばん新しいもの）。「PDFを作成・確認」「送信」で作り直すと更新する
+  let latestPdf = (Array.isArray(pdfList?.data) ? pdfList.data : [])
+    .slice().sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')))[0] || null;
+  let opBusy = false;   // 保存・PDF作成・送信の処理中（自動再計算で画面を描き直さない）
+  let payload = (input && input.payload && typeof input.payload === 'object') ? { ...input.payload } : {};
   let isPublished = !!input?.is_published;
+  // 未送信の明細は、所得税を国税庁の月額表（令和8年分〜）で計算する。送信済みは保存時の計算方法のまま。
+  if (!isPublished) payload.taxMethod = 'table';
+  // 累計支給額（1月〜前月の送信済み明細の総支給額）。当月分は表示時に足す
+  const [curY, curM] = String(month).split('-');
+  const priorGross = (Array.isArray(history?.items) ? history.items : [])
+    .filter((it) => it && it.isPublished && String(it.month || '').startsWith(`${curY}-`) && String(it.month) < String(month))
+    .reduce((sum, it) => sum + (Number(it.gross) || 0), 0);
   let autoCalc = payload.autoCalcDeductions !== false;
   let emp = null;
   try { emp = await service.computeEmp({ userId: user.id, month, payload: { ...payload, autoCalcDeductions: autoCalc } }); } catch { /* ignore */ }
@@ -500,8 +643,19 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
   const toItemList = (v) => Array.isArray(v)
     ? v.map((it) => ({ label: String(it?.label || ''), amount: Number(it?.amount) || 0 }))
     : (v && typeof v === 'object' ? Object.entries(v).map(([label, amount]) => ({ label, amount: Number(amount) || 0 })) : []);
-  let extraEarningsList = toItemList(payload.extraEarnings);
-  let extraDeductionsList = toItemList(payload.extraDeductions);
+  // 専用の入力欄がある項目。以前「項目を追加」で入れていた分は専用欄にまとめる（金額はサーバー集計値を初期値にする）
+  const FIXED_EARN = ['非課税通勤費', '資格手当', '催事協力手当', '通信手当'];
+  const FIXED_DED = ['水道光熱費等'];
+  const YEC = '年末調整徴収';
+  const YER = '年末調整還付';
+  let extraEarningsList = toItemList(payload.extraEarnings).filter((it) => !FIXED_EARN.includes(it.label.trim()));
+  let extraDeductionsList = toItemList(payload.extraDeductions).filter((it) => !FIXED_DED.includes(it.label.trim()));
+  // 年末調整は otherItems に保存する（サーバーが 還付→支給・非課税、徴収→控除 に振り分ける）
+  const otherItemsAll = toItemList(payload.otherItems);
+  const otherItemsRest = otherItemsAll.filter((it) => it.label !== YEC && it.label !== YER);
+  const sumOther = (label) => otherItemsAll.filter((it) => it.label === label).reduce((s0, it) => s0 + Math.abs(it.amount), 0);
+  let yecAmount = sumOther(YEC);
+  let yerAmount = sumOther(YER);
 
   const renderItemRows = (containerId, list) => {
     const el = document.getElementById(containerId);
@@ -532,6 +686,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
     const d = emp?.控除 || {};
     const p = emp?.支払 || {};
     const t = emp?.合計 || {};
+    const src = emp?.源泉 || {};
     const bonus = Number((payload?.overrideEarnings || {})['賞与・臨時'] || 0);
     const absentDeduct = Number(payload?.overrideEarnings?.欠勤控除 ?? s.欠勤控除 ?? 0);
     modal.innerHTML = `
@@ -579,14 +734,19 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         </div>
         <div class="pl-preview-section">
           <h3>支給</h3>
-          ${fieldNum('基礎給', 'sBase', s.基礎給, autoCalc)}
+          ${fieldNum('基本給（月給）', 'sBase', s.基礎給, autoCalc)}
           ${fieldNum('就業手当', 'sQual', s.就業手当, autoCalc)}
-          ${fieldNum('時間外手当', 'sOt', s.時間外手当, autoCalc)}
+          ${fieldNum('残業手当', 'sOt', s.時間外手当, autoCalc)}
           ${fieldNum('週40超手当', 'sW40', s.週40超手当, autoCalc)}
           ${fieldNum('月60超手当', 'sM60', s.月60超手当, autoCalc)}
-          ${fieldNum('所休出手当', 'sHoliday', s.所休出手当, autoCalc)}
-          ${fieldNum('深夜勤手当', 'sNight', s.深夜勤手当, autoCalc)}
+          ${fieldNum('休日出勤手当', 'sHoliday', s.所休出手当, autoCalc)}
+          ${fieldNum('夜間出勤手当', 'sNight', s.深夜勤手当, autoCalc)}
+          ${fieldNum('非課税通勤費', 'sNonTaxCommute', s.非課税通勤費 ?? 0, false)}
+          ${fieldNum('資格手当', 'sCert', s.資格手当 ?? 0, false)}
+          ${fieldNum('催事協力手当', 'sEvent', s.催事協力手当 ?? 0, false)}
+          ${fieldNum('通信手当', 'sComms', s.通信手当 ?? 0, false)}
           ${fieldNum('賞与・臨時', 'sBonus', bonus, false)}
+          ${fieldNum('年末調整還付', 'sYer', yerAmount, false)}
           ${fieldNum('欠勤控除', 'sAbsentDeduct', absentDeduct, false)}
           <div id="extraEarningsList"></div>
           <button type="button" class="pl-btn-add" id="btnAddEarn" style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border:1px dashed #d9d0b8;border-radius:6px;background:none;color:#1c2b45;font-size:11.5px;font-weight:700;cursor:pointer;width:100%;justify-content:center;margin-top:4px;">+ 支給項目を追加</button>
@@ -594,13 +754,26 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         </div>
         <div class="pl-preview-section">
           <h3>控除</h3>
+          <div class="pl-preview-row">
+            <label>税額表</label>
+            <select class="pl-input" id="dTaxCat">
+              <option value="kou" ${src.税額表 !== '乙' ? 'selected' : ''}>甲欄</option>
+              <option value="otsu" ${src.税額表 === '乙' ? 'selected' : ''}>乙欄</option>
+            </select>
+          </div>
+          ${fieldNum('扶養人数', 'dDependents', src.扶養人数 ?? 0, src.税額表 === '乙')}
           ${fieldNum('健康保険料', 'dHealth', d.健康保険料, autoCalc)}
           ${fieldNum('介護保険料', 'dCare', d.介護保険料, autoCalc)}
           ${fieldNum('厚生年金保険', 'dPension', d.厚生年金保険, autoCalc)}
           ${fieldNum('雇用保険料', 'dEmp', d.雇用保険料, autoCalc)}
-          ${fieldNum('所得税（概算）', 'dTax', d.所得税, autoCalc)}
+          ${fieldNum('所得税', 'dTax', d.所得税, autoCalc)}
+          <div style="font-size:11px;color:#8a8168;margin:-2px 0 6px;">${autoCalc
+            ? (src.計算方法 === '税額表' ? `国税庁の月額表（令和8年分・${src.税額表 === '乙' ? '乙欄' : '甲欄'}）で自動計算` : '送信済みの明細のため、送信時の概算率で計算')
+            : '自動計算OFF：手入力'}</div>
           ${fieldNum('住民税', 'dResident', d.住民税, false)}
           ${fieldNum('立替家賃', 'dRent', d.立替家賃, false)}
+          ${fieldNum('水道光熱費等', 'dUtility', d.水道光熱費等 ?? 0, false)}
+          ${fieldNum('年末調整徴収', 'dYec', yecAmount, false)}
           <div id="extraDeductionsList"></div>
           <button type="button" class="pl-btn-add" id="btnAddDed" style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border:1px dashed #d9d0b8;border-radius:6px;background:none;color:#1c2b45;font-size:11.5px;font-weight:700;cursor:pointer;width:100%;justify-content:center;margin-top:4px;">+ 控除項目を追加</button>
           <div class="pl-preview-total"><span>控除合計</span><span>¥${yen(t.総控除額)}</span></div>
@@ -610,11 +783,36 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         <span class="l">差引支給額（手取り）</span>
         <span class="v">¥${yen(t.差引支給額)}</span>
       </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px;">
+        ${[
+          ['総支給額', t.総支給額],
+          ['社会保険料', src.社会保険料 ?? d.社保合計額],
+          ['所得税', d.所得税],
+          ['控除合計', t.総控除額],
+          ['現金支給額', p.現金支給額],
+          ['現物支給額', p.現物支給額],
+          [`累計支給額（${Number(curM)}月まで）`, priorGross + Number(t.総支給額 || 0)]
+        ].map(([l, v]) => `
+          <div style="border:1px solid #e7dfc9;border-radius:8px;padding:8px 10px;background:#fffdf7;">
+            <div style="font-size:11px;color:#8a8168;font-weight:700;">${l}</div>
+            <div style="font-size:15px;font-weight:800;color:#1c2b45;margin-top:2px;">¥${yen(v)}</div>
+          </div>`).join('')}
+      </div>
+      <div style="font-size:11px;color:#8a8168;margin-top:4px;">累計支給額：${curY}年1月から前月までの送信済み明細の総支給額＋当月の総支給額</div>
       <div id="modalMsg" style="margin-top:10px;font-size:12.5px;color:#a13c2e;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;padding:10px 12px;border:1px solid #e7dfc9;border-radius:8px;background:#fffdf7;font-size:12.5px;color:#6b6250;">
+        <div>📄 ${isPublished
+          ? `送信済みの明細PDF${extra?.delivery?.sentAt ? `（送信日時 ${escapeHtml(fmtDateTime(extra.delivery.sentAt))}）` : ''}`
+          : (latestPdf ? `作成済みPDF：${escapeHtml(fmtDateTime(latestPdf.uploadedAt))} 作成（まだ送信していません）` : 'この月のPDFはまだ作成していません')}</div>
+        ${(isPublished ? extra?.delivery?.fileId : latestPdf?.id) ? '<button type="button" class="pl-btn" id="btnOpenPdf">PDFを開く</button>' : ''}
+      </div>
       <div class="pl-modal-actions">
         <button type="button" class="pl-btn" id="btnClose">閉じる</button>
-        ${isPublished ? '' : '<button type="button" class="pl-btn primary" id="btnSavePrev">保存</button>'}
+        ${isPublished ? '' : '<button type="button" class="pl-btn" id="btnSavePrev">保存</button>'}
+        ${isPublished ? '' : '<button type="button" class="pl-btn" id="btnPdfCheck">PDFを作成・確認</button>'}
+        ${isPublished ? '' : '<button type="button" class="pl-btn primary" id="btnSaveSend">送信</button>'}
       </div>
+      ${isPublished ? '' : '<div style="text-align:right;font-size:11px;color:#8a8168;margin-top:6px;">※ 金額は入力欄を変更すると自動で再計算されます。「PDFを作成・確認」「送信」は入力内容を保存してから行います。</div>'}
     `;
 
     renderItemRows('extraEarningsList', extraEarningsList);
@@ -624,7 +822,7 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
     const btnAddDed = modal.querySelector('#btnAddDed');
     if (btnAddDed) btnAddDed.addEventListener('click', () => { extraDeductionsList.push({ label: '', amount: 0 }); renderItemRows('extraDeductionsList', extraDeductionsList); });
 
-    const netAmount = yen(t.差引支給額);
+    const netAmount = Math.round(Number(t.差引支給額) || 0);   // 数値で比較する（yen() は桁区切りの文字列を返す）
     const updatePaySum = () => {
       const bank = Number(modal.querySelector('#pBank').value) || 0;
       const cash = Number(modal.querySelector('#pCash').value) || 0;
@@ -651,10 +849,9 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
     });
     updatePaySum();
 
-    modal.querySelector('#fAutoCalc').addEventListener('change', async (ev) => {
+    modal.querySelector('#fAutoCalc').addEventListener('change', (ev) => {
       autoCalc = ev.target.checked;
-      try { emp = await service.computeEmp({ userId: user.id, month, payload: { ...payload, autoCalcDeductions: autoCalc } }); } catch { /* ignore */ }
-      draw();
+      recalc();   // 入力中の値を保ったまま計算し直す
     });
     modal.querySelector('#btnClose').addEventListener('click', () => overlay.remove());
     const unlockBtn = modal.querySelector('#btnUnlock');
@@ -665,6 +862,10 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         try {
           await service.publishPayslip({ userId: user.id, month, is_published: false });
           isPublished = false;
+          // 未送信に戻ったので、他の未送信の明細と同じく所得税は月額表で計算し直す
+          payload.taxMethod = 'table';
+          try { emp = await service.computeEmp({ userId: user.id, month, payload: { ...payload, autoCalcDeductions: autoCalc } }); } catch { /* keep */ }
+          if (onSaved) onSaved();
           draw();
         } catch (err) {
           window.alert(String(err?.message || '取り消しに失敗しました'));
@@ -688,11 +889,8 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         resetKBtn.disabled = false;
       }
     });
-    const saveBtn = modal.querySelector('#btnSavePrev');
-    if (saveBtn) saveBtn.addEventListener('click', async () => {
-      const msg = modal.querySelector('#modalMsg');
-      const btn = saveBtn;
-      btn.disabled = true;
+    // 画面の入力内容から保存用の payload を作る（保存・再計算で共通）
+    const collectPayload = () => {
       const textOrUndef = (id) => {
         const v = modal.querySelector(id).value.trim();
         return v === '' ? undefined : v;
@@ -715,9 +913,15 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
       setK('週40超時間', textOrUndef('#kW40'));
       setK('月60超時間', textOrUndef('#kM60'));
       setK('深夜勤時間', textOrUndef('#kNight'));
-      const newPayload = {
+      const num = (id) => Number(modal.querySelector(id).value) || 0;
+      const yec = Math.abs(num('#dYec'));
+      const yer = Math.abs(num('#sYer'));
+      const taxCategory = modal.querySelector('#dTaxCat').value === 'otsu' ? 'otsu' : 'kou';
+      return {
         ...payload,
         autoCalcDeductions: autoCalc,
+        taxCategory,
+        dependents: Math.max(0, Math.floor(num('#dDependents'))),
         kintai,
         kintaiVersion: 2,
         rentDeduction: Number(modal.querySelector('#dRent').value) || 0,
@@ -734,7 +938,8 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
             雇用保険料: Number(modal.querySelector('#dEmp').value) || 0,
             所得税: Number(modal.querySelector('#dTax').value) || 0
           }),
-          住民税: Number(modal.querySelector('#dResident').value) || 0
+          住民税: Number(modal.querySelector('#dResident').value) || 0,
+          水道光熱費等: num('#dUtility')
         },
         overrideEarnings: {
           ...(autoCalc ? {} : {
@@ -746,12 +951,113 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
             所休出手当: Number(modal.querySelector('#sHoliday').value) || 0,
             深夜勤手当: Number(modal.querySelector('#sNight').value) || 0
           }),
+          非課税通勤費: num('#sNonTaxCommute'),
+          資格手当: num('#sCert'),
+          催事協力手当: num('#sEvent'),
+          通信手当: num('#sComms'),
           '賞与・臨時': Number(modal.querySelector('#sBonus').value) || 0,
           欠勤控除: -Math.abs(Number(modal.querySelector('#sAbsentDeduct').value) || 0)
         },
         extraEarnings: extraEarningsList.filter((it) => it.label.trim() && it.amount),
-        extraDeductions: extraDeductionsList.filter((it) => it.label.trim() && it.amount)
+        extraDeductions: extraDeductionsList.filter((it) => it.label.trim() && it.amount),
+        otherItems: [
+          ...otherItemsRest,
+          ...(yec ? [{ label: YEC, amount: yec }] : []),
+          ...(yer ? [{ label: YER, amount: yer }] : [])
+        ]
       };
+    };
+
+    // 入力内容で計算し直して表示を更新する（保存はしない）
+    const recalc = async () => {
+      if (opBusy) return;
+      const np = collectPayload();
+      yecAmount = Math.abs(Number(modal.querySelector('#dYec').value) || 0);
+      yerAmount = Math.abs(Number(modal.querySelector('#sYer').value) || 0);
+      try {
+        const next = await service.computeEmp({ userId: user.id, month, payload: np });
+        if (opBusy || !overlay.isConnected) return;   // 保存・送信中に結果が届いた場合は画面を描き直さない
+        // 入力中の欄のフォーカスを描き直し後も保つ
+        const activeId = document.activeElement && modal.contains(document.activeElement) ? document.activeElement.id : '';
+        payload = np;
+        emp = next;
+        draw();
+        if (activeId) { const el = modal.querySelector('#' + activeId); if (el) el.focus(); }
+      } catch (err) {
+        const msg = modal.querySelector('#modalMsg');
+        msg.style.color = '#a13c2e';
+        msg.textContent = String(err?.message || '計算に失敗しました');
+      }
+    };
+    // 入力欄を変更したら（欄を離れたとき）自動で計算し直す
+    if (!isPublished) {
+      modal.querySelector('.pl-preview-grid').addEventListener('change', (ev) => {
+        if (ev.target && ev.target.id === 'fAutoCalc') return;
+        recalc();
+      });
+    }
+
+    // 保存 → PDF作成（→ 送信）。PDFは保存内容から作られるので必ず先に保存する
+    const setModalMsg = (text, ok) => {
+      const msg = modal.querySelector('#modalMsg');
+      msg.style.color = ok ? '#3f6b2c' : '#a13c2e';
+      msg.textContent = text;
+    };
+    const actionBtns = () => ['#btnSavePrev', '#btnPdfCheck', '#btnSaveSend'].map((sel) => modal.querySelector(sel)).filter(Boolean);
+    const busy = (on) => { opBusy = on; actionBtns().forEach((b) => { b.disabled = on; }); };
+    const pdfCheckBtn = modal.querySelector('#btnPdfCheck');
+    if (pdfCheckBtn) pdfCheckBtn.addEventListener('click', async () => {
+      busy(true);
+      setModalMsg('保存してPDFを作成しています...', true);
+      try {
+        const np = collectPayload();
+        await service.persistPayload({ userId: user.id, month, payload: np });
+        const res = await service.generatePayslip({ userId: user.id, month });
+        if (!res?.secureUrl) throw new Error('PDF作成に失敗しました');
+        await openPdf(res.secureUrl);
+        // 保存した内容と作成したPDFを画面に反映する
+        payload = np;
+        try { emp = await service.computeEmp({ userId: user.id, month, payload: np }); } catch { /* keep */ }
+        latestPdf = { id: res.id, uploadedAt: new Date().toISOString() };
+        opBusy = false;
+        draw();
+        setModalMsg('✓ 保存してPDFを作成しました。内容がよければ「送信」を押してください（まだ送信していません）', true);
+        if (onSaved) onSaved();
+      } catch (err) {
+        setModalMsg(String(err?.message || 'PDF作成に失敗しました'), false);
+        busy(false);
+      }
+    });
+    const saveSendBtn = modal.querySelector('#btnSaveSend');
+    if (saveSendBtn) saveSendBtn.addEventListener('click', async () => {
+      if (!window.confirm(`${user.username || user.id} さん（${monthLabel(month)}）の給与明細を送信しますか？\n送信すると、社員はマイページから給与明細を確認できるようになります。`)) return;
+      busy(true);
+      setModalMsg('送信しています...', true);
+      try {
+        await service.persistPayload({ userId: user.id, month, payload: collectPayload() });
+        await service.generatePayslip({ userId: user.id, month });
+        await service.publishPayslip({ userId: user.id, month, is_published: true });
+        setModalMsg('✓ 送信しました', true);
+        if (onSaved) onSaved();
+        setTimeout(() => overlay.remove(), 900);
+      } catch (err) {
+        setModalMsg(String(err?.message || '送信に失敗しました'), false);
+        busy(false);
+      }
+    });
+    const openPdfBtn = modal.querySelector('#btnOpenPdf');
+    if (openPdfBtn) openPdfBtn.addEventListener('click', () => {
+      const fileId = isPublished ? extra?.delivery?.fileId : latestPdf?.id;
+      if (fileId) openPdf(`/api/payslips/admin/file/${encodeURIComponent(fileId)}`);
+    });
+
+    const saveBtn = modal.querySelector('#btnSavePrev');
+    if (saveBtn) saveBtn.addEventListener('click', async () => {
+      const msg = modal.querySelector('#modalMsg');
+      const btn = saveBtn;
+      btn.disabled = true;
+      opBusy = true;
+      const newPayload = collectPayload();
       try {
         await service.persistPayload({ userId: user.id, month, payload: newPayload });
         msg.style.color = '#3f6b2c';
@@ -763,202 +1069,11 @@ async function openCalcPreviewModal(user, month, ctx, onSaved) {
         msg.style.color = '#a13c2e';
         msg.textContent = String(err?.message || '保存に失敗しました');
         btn.disabled = false;
+        opBusy = false;
       }
     });
   };
   draw();
-}
-
-// ---------------------------------------------------------------------------
-// 明細書 (printable payslip preview — real PDF still uses the existing template)
-// ---------------------------------------------------------------------------
-
-async function renderPayslipSection(mainEl, ctx) {
-  const { employees, service, config } = ctx;
-  let userId = employees[0] ? String(employees[0].id) : '';
-  let month = currentMonth();
-
-  mainEl.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-      <select class="pl-select" id="pEmp">
-        ${employees.map((u) => `<option value="${u.id}">${escapeHtml(u.username || u.email || '')} (${escapeHtml(employeeCode(u))})</option>`).join('')}
-      </select>
-      <select class="pl-select" id="pMonth">
-        ${monthOptions(month).map((m) => `<option value="${m}" ${m === month ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}
-      </select>
-      <button type="button" class="pl-btn" id="btnPdf">PDF作成・プレビュー</button>
-      <button type="button" class="pl-btn primary" id="btnSend">給与明細を送信</button>
-      <a id="linkHistory" href="/admin/payroll/employees?standalone=1" target="_blank" rel="noopener" class="pl-btn" style="text-decoration:none;">送信履歴を見る</a>
-    </div>
-    <div class="pl-head">
-      <div>
-        <div class="pl-eyebrow">PAYSLIP</div>
-        <h1>明細書</h1>
-        <p>従業員と対象月を選んで明細を表示し、PDF作成・送信は従来のテンプレートを使用します</p>
-      </div>
-    </div>
-    <div id="payslipMsg" style="margin-bottom:10px;font-size:12.5px;font-weight:700;"></div>
-    <div id="payslipHost"></div>
-  `;
-
-  const host = mainEl.querySelector('#payslipHost');
-
-  const parseHmToMin = (hm) => {
-    if (!hm && hm !== 0) return 0;
-    if (typeof hm === 'number') return hm;
-    const pts = String(hm).split(':');
-    if (pts.length === 2) return parseInt(pts[0], 10) * 60 + parseInt(pts[1], 10);
-    return Number(hm) || 0;
-  };
-  const timeHrs = (v) => {
-    if (!v && v !== 0) return '';
-    if (v === '0.00' || v === '0:00' || v === '00:00' || v === '0' || v === 0) return '';
-    const min = parseHmToMin(v);
-    if (min === 0) return String(v);
-    const val = (min / 60).toFixed(2);
-    return val === '0.00' ? '' : val;
-  };
-  const countZero = (v) => Number(v || 0).toFixed(2);
-
-  const gridBlock = (title, cols, rows, slots) => {
-    const cells = slots.map((it) => `
-      <div class="pl-grid-cell">
-        <div class="l">${it ? escapeHtml(it.label) : ''}</div>
-        <div class="v">${it ? escapeHtml(it.value ?? '') : ''}</div>
-      </div>
-    `).join('');
-    return `
-      <div class="pl-grid-block" style="grid-template-columns:26px repeat(${cols},1fr);">
-        <div class="sec-label" style="grid-row:1 / span ${rows};">${title.split('').join('<br>')}</div>
-        ${cells}
-      </div>
-    `;
-  };
-
-  const draw = async () => {
-    host.innerHTML = `<div style="padding:40px;text-align:center;color:#9b8f72;">読み込み中...</div>`;
-    const user = employees.find((u) => String(u.id) === String(userId));
-    if (!user) { host.innerHTML = `<div class="pl-empty">従業員を選択してください</div>`; return; }
-    let input = null;
-    try { input = await service.loadInput({ userId, month }); } catch { /* ignore */ }
-    const payload = (input && input.payload && typeof input.payload === 'object') ? input.payload : {};
-    let emp = null;
-    try { emp = await service.computeEmp({ userId, month, payload }); } catch { /* ignore */ }
-    if (!emp) { host.innerHTML = `<div class="pl-empty">データを取得できませんでした</div>`; return; }
-    const k = emp.勤怠 || {}; const s = emp.支給 || {}; const d = emp.控除 || {}; const t = emp.合計 || {};
-    const [y, mo] = month.split('-');
-
-    const attSlots = Array(21).fill(null);
-    attSlots[0] = { label: '出勤日数', value: countZero(k.出勤日数) };
-    attSlots[1] = { label: '有給休暇', value: countZero(k.有給休暇) };
-    attSlots[4] = { label: '欠勤日数', value: countZero(k.欠勤日数) };
-    attSlots[7] = { label: '就業時間', value: timeHrs(k.就業時間) };
-    attSlots[8] = { label: '法外時間外', value: timeHrs(k.法外時間外 ?? 0) };
-    attSlots[9] = { label: '所定休出勤', value: countZero(k.所定休出勤 ?? k.休日出勤日数 ?? 0) };
-    attSlots[10] = { label: '週40超時間', value: timeHrs(k.週40超時間 ?? 0) };
-    attSlots[11] = { label: '月60超時間', value: timeHrs(k.月60超時間 ?? 0) };
-    attSlots[12] = { label: '法定休出勤', value: countZero(k.法定休出勤 ?? 0) };
-    attSlots[13] = { label: '深夜勤時間', value: timeHrs(k.深夜勤時間 ?? 0) };
-    attSlots[14] = { label: '前月有休残', value: countZero(k.前月有休残 ?? 0) };
-
-    const earnSlots = Array(42).fill(null);
-    earnSlots[0] = { label: '基礎給', value: yen(s.基礎給) };
-    earnSlots[1] = { label: '就業手当', value: yen(s.就業手当) };
-    earnSlots[14] = { label: '欠勤控除', value: yen(s.欠勤控除 ?? 0) };
-    earnSlots[28] = { label: '時間外手当', value: yen(s.時間外手当 ?? 0) };
-    earnSlots[29] = { label: '所休出手当', value: yen(s.所休出手当 ?? 0) };
-    earnSlots[30] = { label: '週40超手当', value: yen(s.週40超手当 ?? 0) };
-    earnSlots[31] = { label: '月60超手当', value: yen(s.月60超手当 ?? 0) };
-    earnSlots[32] = { label: '法休出手当', value: yen(s.法休出手当 ?? 0) };
-    earnSlots[33] = { label: '深夜勤手当', value: yen(s.深夜勤手当 ?? 0) };
-    const standardE = new Set(['基礎給', '就業手当', '欠勤控除', '時間外手当', '所休出手当', '週40超手当', '月60超手当', '法休出手当', '深夜勤手当']);
-    let eIdx = 2;
-    for (const [key, v] of Object.entries(s)) {
-      if (!standardE.has(key) && Number(v)) {
-        while (earnSlots[eIdx] && eIdx < 42) eIdx++;
-        if (eIdx < 42) earnSlots[eIdx] = { label: key, value: yen(v) };
-      }
-    }
-
-    const dedSlots = Array(35).fill(null);
-    dedSlots[0] = { label: '健康保険', value: yen(d.健康保険料 ?? 0) };
-    dedSlots[1] = { label: '介護保険', value: yen(d.介護保険料 ?? 0) };
-    dedSlots[2] = { label: '厚生年金', value: yen(d.厚生年金保険 ?? 0) };
-    dedSlots[3] = { label: '雇用保険', value: yen(d.雇用保険料 ?? 0) };
-    dedSlots[4] = { label: '社会保険計額', value: yen(d.社保合計額 ?? 0) };
-    dedSlots[5] = { label: '課税対象額', value: yen(d.課税対象額 ?? 0) };
-    dedSlots[7] = { label: '所得税', value: yen(d.所得税 ?? 0) };
-    dedSlots[9] = { label: '立替家賃', value: yen(d.立替家賃 ?? 0) };
-    dedSlots[10] = { label: '住民税', value: yen(d.住民税 ?? 0) };
-
-    host.innerHTML = `
-      <div class="pl-payslip-doc">
-        <div class="company">${escapeHtml(config?.companyName || '会社名未設定')}</div>
-        <table class="pl-payslip-info"><tbody>
-          <tr><td>支給日</td><td>${escapeHtml(new Date().toISOString().slice(0, 10))}</td></tr>
-          <tr><td>No</td><td>${escapeHtml(employeeCode(user))}</td></tr>
-          <tr><td>氏名</td><td>${escapeHtml(user.username || '')}</td></tr>
-        </tbody></table>
-        <h2>給与支給明細書　${y}年${mo}月</h2>
-        ${gridBlock('勤怠', 7, 3, attSlots)}
-        ${gridBlock('支給', 7, 6, earnSlots)}
-        ${gridBlock('控除', 7, 5, dedSlots)}
-        <div class="pl-payslip-totrow">
-          <div><div class="l">総支給額</div><div class="v">${yen(t.総支給額)}</div></div>
-          <div><div class="l">総控除額</div><div class="v">${yen(t.総控除額)}</div></div>
-          <div><div class="l">差引支給額</div><div class="v">${yen(t.差引支給額)}</div></div>
-        </div>
-        <div class="pl-payslip-bank">
-          振込銀行　${escapeHtml(emp.振込口座 || emp.振込銀行 || '—')}
-        </div>
-        <div style="margin-top:10px;font-size:10.5px;color:#8a8168;">※ 所得税は簡易概算です。実際の源泉徴収額は国税庁の税額表でご確認ください。</div>
-      </div>
-    `;
-  };
-
-  const msgEl = mainEl.querySelector('#payslipMsg');
-  const setMsg = (text, ok) => {
-    msgEl.textContent = text || '';
-    msgEl.style.color = ok ? '#3f6b2c' : '#a13c2e';
-  };
-
-  const updateHistoryLink = () => {
-    mainEl.querySelector('#linkHistory').href = `/admin/payroll/employees?standalone=1&empId=${encodeURIComponent(userId)}`;
-  };
-  updateHistoryLink();
-  mainEl.querySelector('#pEmp').addEventListener('change', (ev) => { userId = ev.target.value; setMsg(''); updateHistoryLink(); draw(); });
-  mainEl.querySelector('#pMonth').addEventListener('change', (ev) => { month = ev.target.value; setMsg(''); draw(); });
-  mainEl.querySelector('#btnPdf').addEventListener('click', async () => {
-    try {
-      const res = await service.generatePayslip({ userId, month });
-      if (res && res.secureUrl) {
-        await openPdf(res.secureUrl);
-      } else {
-        window.alert('PDF作成に失敗しました。');
-      }
-    } catch (err) {
-      window.alert(String(err?.message || 'PDF作成に失敗しました'));
-    }
-  });
-  mainEl.querySelector('#btnSend').addEventListener('click', async () => {
-    const user = employees.find((u) => String(u.id) === String(userId));
-    if (!user) return;
-    if (!window.confirm(`${user.username || userId} 様（${monthLabel(month)}）の給与明細を送信しますか？\n公開すると、社員はマイページから給与明細を確認できるようになります。`)) return;
-    const btn = mainEl.querySelector('#btnSend');
-    btn.disabled = true;
-    setMsg('送信中...', true);
-    try {
-      await service.generatePayslip({ userId, month });
-      await service.publishPayslip({ userId, month, is_published: true });
-      setMsg('送信しました', true);
-    } catch (err) {
-      setMsg(String(err?.message || '送信に失敗しました'), false);
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  await draw();
 }
 
 // ---------------------------------------------------------------------------
