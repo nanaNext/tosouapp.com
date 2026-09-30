@@ -3,21 +3,129 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=0.75,minimum-scale=0.75,maximum-scale=3,user-scalable=yes">
-  <title>勤怠入力</title>
+  <title>個人カレンダー</title>
   <link rel="stylesheet" href="/static/css/base.css?v=navy-20260408-1">
   <link rel="stylesheet" href="/static/css/attendance.css?v=navy-20260427-4">
   <link rel="stylesheet" href="/static/css/attendance-monthly.css?v=navy-20260925-floathead1">
   <link rel="icon" href="data:,">
   <style>
-    .layout-contents .kintai-grid {
-      margin: 8px 0 0 0;
-      grid-template-columns: minmax(0, 700px);
-      justify-content: center;
+    /* スクロール領域をヘッダーの下から始めて、ヘッダーの裏に隠れないようにする */
+    body:not(.embed) .kintai-main.pc-main { margin-top: var(--kintai-top-h, 48px); height: calc(100vh - var(--kintai-top-h, 48px)); padding: 0 12px 24px; box-sizing: border-box; }
+    /* 上の余白はスクロール領域の padding ではなく見出し側に持たせる（sticky がヘッダー直下に密着するように） */
+    .pc-main .se-page-head { padding-top: 12px; }
+    .pc-wrap { max-width: 1180px; margin: 0 auto 24px; }
+    .pc-sticky { position: sticky; top: 0; z-index: 5; background: #fff; margin: -14px -16px 14px; padding: 14px 16px 0; border-radius: 12px 12px 0 0; }
+    .pc-month { scroll-margin-top: 130px; }
+    .pc-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .pc-year-nav { display: flex; align-items: center; gap: 8px; }
+    .pc-year { font-size: 20px; font-weight: 900; color: #0f172a; min-width: 84px; text-align: center; }
+    .pc-btn { border: 1px solid #cbd5e1; background: #fff; color: #0b2c66; border-radius: 8px; padding: 6px 10px; font-weight: 800; cursor: pointer; }
+    .pc-btn:hover { background: #eff6ff; }
+    .pc-btn-today { margin-left: 4px; }
+    .pc-link { display: inline-block; padding: 7px 14px; border-radius: 8px; background: #1e40af; color: #fff; font-weight: 800; text-decoration: none; }
+    .pc-link:hover { background: #1e3a8a; }
+    .pc-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: #475569; padding: 8px 0 12px; border-bottom: 1px solid #e5e7eb; }
+    .pc-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .lg { width: 14px; height: 14px; border-radius: 4px; display: inline-block; border: 1px solid #cbd5e1; }
+    .lg-holiday { background: #fee2e2; border-color: #fca5a5; }
+    .lg-off { background: #f1f5f9; }
+    .lg-work { background: #dbeafe; border-color: #93c5fd; }
+    .lg-leave { background: #dcfce7; border-color: #86efac; }
+    .lg-pending { background: #fff; border: 1px dashed #16a34a; }
+    .lg-today { background: #fff; border: 2px solid #1e40af; }
+    .pc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .pc-loading { grid-column: 1 / -1; padding: 40px 0; text-align: center; color: #475569; font-weight: 700; }
+    .pc-month { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; background: #fff; }
+    .pc-month.is-current { border-color: #93c5fd; box-shadow: 0 0 0 2px #dbeafe; }
+    .pc-month-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+    .pc-month-name { font-weight: 900; font-size: 15px; color: #0f172a; }
+    .pc-month-status { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+    .pc-month-status.is-pending { background: #fef3c7; color: #92400e; }
+    .pc-month-status.is-approved { background: #dcfce7; color: #166534; }
+    .pc-month-status.is-returned { background: #fee2e2; color: #991b1b; }
+    .pc-week, .pc-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+    .pc-week span { text-align: center; font-size: 11px; font-weight: 800; color: #64748b; padding: 2px 0; }
+    .pc-week .is-sun, .pc-day.is-sun .pc-num { color: #dc2626; }
+    .pc-week .is-sat, .pc-day.is-sat .pc-num { color: #2563eb; }
+    .pc-day { min-height: 38px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 3px 0 2px; border: 1px solid transparent; }
+    .pc-day.is-blank { visibility: hidden; }
+    .pc-num { font-size: 12px; font-weight: 700; color: #0f172a; line-height: 1.2; }
+    .pc-tag { font-size: 9px; font-weight: 800; line-height: 1.1; margin-top: 2px; white-space: nowrap; overflow: hidden; max-width: 100%; }
+    .pc-day.is-off { background: #f1f5f9; }
+    .pc-day.is-holiday { background: #fee2e2; }
+    .pc-day.is-holiday .pc-num { color: #dc2626; }
+    .pc-day.is-work { background: #dbeafe; }
+    .pc-day.is-work .pc-tag { color: #1e40af; }
+    .pc-day.is-leave { background: #dcfce7; }
+    .pc-day.is-leave .pc-tag { color: #166534; }
+    .pc-day.is-leave.is-pending { background: #fff; border: 1px dashed #16a34a; }
+    .pc-day.is-furikae { background: #fef3c7; }
+    .pc-day.is-furikae .pc-tag { color: #92400e; }
+    .pc-day.is-shift-off .pc-tag { color: #64748b; }
+    .pc-day.is-today { border: 2px solid #1e40af; }
+    .pc-day[title] { cursor: help; }
+    @media (max-width: 1100px) { .pc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    /* スマホ用の月タブ・予定一覧は PC では出さない */
+    .pc-month-tabs, .pc-events-wrap { display: none; }
+    @media (max-width: 820px) { .pc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 700px) {
+      .pc-sticky { margin: -10px -12px 12px; padding: 10px 12px 0; }
+    }
+    /* ===== スマホ: 1か月ずつ表示 ===== */
+    @media (max-width: 640px) {
+      /* 共通CSS(attendance-monthly.css)の !important 付き上余白を打ち消す */
+      body:not(.embed) .kintai-main.pc-main { padding: 0 8px 16px !important; }
+      .pc-main .se-page-head { padding-top: 10px; margin-bottom: 8px; }
+      .pc-main .se-page-title { font-size: 18px; }
+      .pc-wrap { margin: 0 0 16px; }
+      .pc-wrap .kintai-card { padding: 10px; }
+      .pc-sticky { margin: -10px -10px 10px; padding: 10px 10px 0; }
+      .pc-toolbar { flex-wrap: nowrap; gap: 6px; margin-bottom: 8px; }
+      .pc-year-nav { gap: 4px; }
+      .pc-year { font-size: 17px; min-width: 64px; }
+      .pc-btn { padding: 6px 9px; font-size: 13px; }
+      .pc-btn-today { margin-left: 2px; }
+      .pc-link { padding: 7px 10px; font-size: 13px; white-space: nowrap; }
+      .pc-month-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+      .pc-month-tabs::-webkit-scrollbar { display: none; }
+      .pc-tab { flex: 0 0 auto; border: 1px solid #cbd5e1; background: #fff; color: #334155; border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 800; }
+      .pc-tab.is-now { border-color: #1e40af; color: #1e40af; }
+      .pc-tab.is-active { background: #1e40af; border-color: #1e40af; color: #fff; }
+      .pc-legend { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 6px 12px; font-size: 11px; padding: 4px 0 10px; }
+      .lg { width: 12px; height: 12px; }
+      .pc-grid { display: block; }
+      .pc-month { display: none; border: 0; padding: 0; }
+      .pc-month.is-active { display: block; }
+      .pc-month.is-current { box-shadow: none; }
+      .pc-month-head { padding: 0 2px 6px; }
+      .pc-month-name { font-size: 17px; }
+      .pc-week { margin-bottom: 4px; }
+      .pc-week span { font-size: 12px; }
+      .pc-week, .pc-days { gap: 4px; }
+      .pc-day { min-height: 0; aspect-ratio: 1 / 1; justify-content: center; padding: 0; border-radius: 8px; }
+      .pc-num { font-size: 15px; }
+      .pc-tag { font-size: 9px; margin-top: 1px; }
+      .pc-events-wrap { display: block; margin-top: 14px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+      .pc-events-title { font-size: 13px; font-weight: 900; color: #0f172a; margin-bottom: 6px; }
+      .pc-events { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+      .pc-events li { display: flex; gap: 10px; align-items: baseline; font-size: 13px; padding: 7px 10px; border-radius: 8px; background: #f8fafc; border-left: 4px solid #cbd5e1; }
+      .pc-events li.is-holiday { border-left-color: #f87171; }
+      .pc-events li.is-work { border-left-color: #60a5fa; }
+      .pc-events li.is-leave { border-left-color: #4ade80; }
+      .pc-events li.is-furikae { border-left-color: #fbbf24; }
+      .pc-ev-date { font-weight: 800; color: #334155; white-space: nowrap; min-width: 62px; }
+      .pc-ev-text { color: #0f172a; }
+      .pc-events-empty { font-size: 13px; color: #64748b; padding: 4px 2px; }
+    }
+    @media (max-width: 360px) {
+      .pc-link { padding: 7px 8px; font-size: 12px; }
+      .pc-year { min-width: 56px; font-size: 15px; }
     }
   </style>
   <script src="/static/js/pages/session-idle.js?v=navy-20260324-1" defer></script>
   <script src="/static/js/pages/kintai-topbar-links.js?v=navy-20260427-5" defer></script>
   <script type="module" src="/static/js/pages/attendance.page.js?v=navy-20260427-15"></script>
+  <script type="module" src="/static/js/pages/attendance-calendar.page.js?v=20261001-4"></script>
 </head>
 <body class="nav-js">
   <div id="pageSpinner" class="kintai-spinner" hidden>
@@ -39,6 +147,7 @@
             勤怠入力 <span class="kintai-caret">▾</span>
           </button>
           <div class="kintai-dd" data-dd-panel="att" hidden>
+            <a href="/ui/attendance?back=1">個人カレンダー登録画面</a>
             <a href="/ui/attendance/monthly">月次勤怠入力へ</a>
             <a href="/ui/attendance/simple">簡易登録画面</a>
           </div>
@@ -70,7 +179,7 @@
     </div>
   </header>
 
-  <main class="kintai-main">
+  <main class="kintai-main pc-main">
     <div class="layout-container">
       <div class="layout-main">
         <div class="layout-header"></div>
@@ -78,10 +187,9 @@
           <div class="se-page-head">
             <div class="se-page-title">個人カレンダー登録画面</div>
           </div>
-          <section class="kintai-grid">
+          <section class="pc-wrap">
             <div class="kintai-card">
-              <div class="kintai-card-title">お知らせ</div>
-              <div id="noticeHost"></div>
+              <div id="personalCalendar"></div>
             </div>
           </section>
         </div>
