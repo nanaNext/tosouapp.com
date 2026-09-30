@@ -86,11 +86,6 @@ import{me as G,refresh as Q,logout as X}from"../api/auth.api.js";import{fetchJSO
             <span id="tileNoticeBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#ef4444; color:#fff; font-size:11px; font-weight:800; min-width:18px; height:18px; line-height:18px; text-align:center; border-radius:99px; padding:0 5px;"></span>
             <div class="arrow">\u203A</div>
           </a>
-          <a class="tile emp-wide" href="/ui/faq">
-            <div class="icon">\u{1F4AC}</div>
-            <div class="title">\u30A8\u30F3\u30B8\u30CB\u30A2<br>\u30B5\u30DD\u30FC\u30C8\u30BB\u30F3\u30BF\u30FC</div>
-            <div class="arrow">\u203A</div>
-          </a>
           <a class="tile emp-wide" href="/ui/salary">
             <div class="icon">\u{1F4B4}</div>
             <div class="title">\u7D66\u4E0E\u660E\u7D30\u306A\u3069</div>

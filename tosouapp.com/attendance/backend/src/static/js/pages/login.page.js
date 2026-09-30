@@ -277,3 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindForceNav('termsLinkCircle', '/terms');
   bindForceNav('privacyLinkCircle', '/privacy');
 });
+
+/* ログインし直したら、×で消したヘルプのキャラクターをまた表示する（help-bot.js） */
+try{localStorage.removeItem("igb-hidden")}catch{}
