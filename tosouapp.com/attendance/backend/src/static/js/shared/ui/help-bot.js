@@ -272,6 +272,8 @@
   /* スマホ: 画面を覆わないよう小さめのパネルにし、猫の上に重ねて出す */
   '@media (max-width:600px){.igb-panel{right:10px;bottom:calc(var(--igb-off) + 10px + env(safe-area-inset-bottom,0px));width:min(310px,calc(100vw - 20px));height:auto;max-height:min(58dvh,440px);min-height:0;border-radius:12px}.igb-h{padding:9px 12px;font-size:14px}.igb-log{padding:10px;gap:8px}.igb-m{font-size:13px;line-height:1.55;padding:7px 10px}.igb-ch{flex-direction:row;flex-wrap:wrap;gap:6px}.igb-chip{font-size:13px;padding:6px 11px}.igb-f{padding:8px;gap:6px}.igb-in{padding:7px 9px}.igb-wrap.igb-behind{visibility:hidden}}' +
   '@media print{.igb-wrap,.igb-tip,.igb-panel{display:none!important}}' +
+  /* メニュー(ドロワー)を開いている間は猫・吹き出し・パネルを隠す */
+  'body.drawer-open .igb-wrap,body.drawer-open .igb-tip,body.drawer-open .igb-panel,body.mobile-drawer-open .igb-wrap,body.mobile-drawer-open .igb-tip,body.mobile-drawer-open .igb-panel{display:none!important}' +
   '@media (prefers-reduced-motion:reduce){.igb-typing i,.igb-eye,.igb-drop,.igb-shadow.igb-s2,.igb-paw{animation:none}.igb-typing i{opacity:.6}.igb-tip{transition:none}.igb-tip.igb-show{animation:none}.igb-sp{display:none}}';
 
   function el(tag, cls, text) {
