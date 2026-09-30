@@ -229,7 +229,9 @@ module.exports = {
         COALESCE(SUM(CASE WHEN wr.start_time IS NOT NULL AND wr.end_time IS NOT NULL
           THEN TIME_TO_SEC(TIMEDIFF(wr.end_time, wr.start_time)) / 60 ELSE 0 END), 0) AS totalMinutes,
         SUM(CASE WHEN wr.status = 'pending' THEN 1 ELSE 0 END) AS pending,
-        SUM(CASE WHEN wr.status = 'rejected' THEN 1 ELSE 0 END) AS rejected
+        SUM(CASE WHEN wr.status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+        SUM(CASE WHEN wr.status <> 'rejected' AND TRIM(COALESCE(wr.work, '')) <> '' THEN 1 ELSE 0 END) AS submitted,
+        SUM(CASE WHEN wr.status <> 'rejected' AND TRIM(COALESCE(wr.work, '')) = '' THEN 1 ELSE 0 END) AS missing
       FROM work_reports wr
       JOIN users u ON u.id = wr.userId
       LEFT JOIN departments d ON d.id = u.departmentId
@@ -238,7 +240,11 @@ module.exports = {
 
     const itemsWhere = baseWhere.slice();
     const itemsParams = baseParams.slice();
-    if (status) { itemsWhere.push('wr.status = ?'); itemsParams.push(status); }
+    // 承認フローを廃止したため、画面上の状態は「提出済み / 未提出 / 差戻し」で絞り込む。
+    // 未提出 = 出勤打刻時に自動作成された行のまま、作業内容が空のもの（DB の status は変更しない）。
+    if (status === 'submitted') itemsWhere.push(`wr.status <> 'rejected' AND TRIM(COALESCE(wr.work, '')) <> ''`);
+    else if (status === 'missing') itemsWhere.push(`wr.status <> 'rejected' AND TRIM(COALESCE(wr.work, '')) = ''`);
+    else if (status) { itemsWhere.push('wr.status = ?'); itemsParams.push(status); }
     const itemsWhereSql = itemsWhere.join(' AND ');
 
     const [[{ total }]] = await db.query(`
@@ -283,7 +289,9 @@ module.exports = {
         count: Number(summaryRow?.count) || 0,
         totalMinutes: Math.round(Number(summaryRow?.totalMinutes) || 0),
         pending: Number(summaryRow?.pending) || 0,
-        rejected: Number(summaryRow?.rejected) || 0
+        rejected: Number(summaryRow?.rejected) || 0,
+        submitted: Number(summaryRow?.submitted) || 0,
+        missing: Number(summaryRow?.missing) || 0
       }
     };
   },

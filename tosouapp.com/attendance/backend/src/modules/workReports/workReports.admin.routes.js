@@ -1532,7 +1532,7 @@ router.get('/list', authorize('admin', 'manager'), async (req, res) => {
   try {
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const dept = req.query?.dept ? String(req.query.dept) : '';
-    const status = ['pending', 'approved', 'rejected'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
+    const status = ['pending', 'approved', 'rejected', 'submitted', 'missing'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
     const q = req.query?.q ? String(req.query.q) : '';
     const page = parseInt(req.query?.page, 10) || 1;
     const pageSize = parseInt(req.query?.pageSize, 10) || 50;
@@ -1590,6 +1590,11 @@ router.patch('/:id', authorize('admin', 'manager'), async (req, res) => {
       patch.workType = wt === 'onsite' || wt === 'remote' || wt === 'satellite' ? wt : null;
     }
     await repo.update(id, patch);
+    // 管理者が 未提出(空) / 差戻し の報告に作業内容を入れた場合も 提出済み（approved）にする
+    const afterUpdate = await repo.getById(id);
+    if (afterUpdate && afterUpdate.status !== 'approved' && String(afterUpdate.work || '').trim()) {
+      await repo.setStatus(id, 'approved', { approvedBy: req.user?.id || null, rejectedReason: null });
+    }
     const saved = await repo.getById(id);
     _logAudit(req, 'work_report_update', before, saved);
     res.status(200).json(saved);
@@ -1650,14 +1655,15 @@ router.get('/export.csv', authorize('admin', 'manager'), async (req, res) => {
   try {
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const dept = req.query?.dept ? String(req.query.dept) : '';
-    const status = ['pending', 'approved', 'rejected'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
+    const status = ['pending', 'approved', 'rejected', 'submitted', 'missing'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
     const q = req.query?.q ? String(req.query.q) : '';
     const { items } = await repo.listForAdmin({ tenantId: req.tenantId, month, dept, status, q, page: 1, pageSize: 5000 });
     const csvEsc = (v) => {
       const s = String(v ?? '');
       return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const statusLabel = (s) => s === 'approved' ? '承認済み' : s === 'rejected' ? '差戻し' : '承認待ち';
+    // 承認フロー廃止後の表示: 差戻し / 未提出(作業内容が空) / 提出済み
+    const statusLabel = (r) => r.status === 'rejected' ? '差戻し' : (String(r.work || '').trim() ? '提出済み' : '未提出');
     const fmtHm = (t) => t ? String(t).slice(0, 5) : '';
     const header = '日付,社員番号,氏名,部署,現場・案件,作業内容,開始,終了,ステータス\n';
     let csv = header;
@@ -1671,7 +1677,7 @@ router.get('/export.csv', authorize('admin', 'manager'), async (req, res) => {
         csvEsc(r.work || ''),
         csvEsc(fmtHm(r.startTime)),
         csvEsc(fmtHm(r.endTime)),
-        csvEsc(statusLabel(r.status))
+        csvEsc(statusLabel(r))
       ].join(',') + '\n';
     }
     const filename = `work_reports_${month}.csv`;
@@ -1688,11 +1694,12 @@ router.get('/export-report.xlsx', authorize('admin', 'manager'), async (req, res
     const ExcelJS = require('exceljs');
     const month = isYM(req.query?.month) ? String(req.query.month) : monthJST();
     const dept = req.query?.dept ? String(req.query.dept) : '';
-    const status = ['pending', 'approved', 'rejected'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
+    const status = ['pending', 'approved', 'rejected', 'submitted', 'missing'].includes(String(req.query?.status || '')) ? String(req.query.status) : '';
     const q = req.query?.q ? String(req.query.q) : '';
     const { items } = await repo.listForAdmin({ tenantId: req.tenantId, month, dept, status, q, page: 1, pageSize: 5000 });
 
-    const statusLabel = (s) => s === 'approved' ? '承認済み' : s === 'rejected' ? '差戻し' : '承認待ち';
+    // 承認フロー廃止後の表示: 差戻し / 未提出(作業内容が空) / 提出済み
+    const statusLabel = (r) => r.status === 'rejected' ? '差戻し' : (String(r.work || '').trim() ? '提出済み' : '未提出');
     const fmtHm = (t) => t ? String(t).slice(0, 5) : '';
     const durationHm = (st, et) => {
       if (!st || !et) return '';
@@ -1727,7 +1734,7 @@ router.get('/export-report.xlsx', authorize('admin', 'manager'), async (req, res
       fmtHm(r.startTime),
       fmtHm(r.endTime),
       durationHm(r.startTime, r.endTime),
-      statusLabel(r.status)
+      statusLabel(r)
     ]);
 
     // 勤怠記録のExcel出力と同じ配色 (えんじヘッダー + 薄いピンク行) で統一する

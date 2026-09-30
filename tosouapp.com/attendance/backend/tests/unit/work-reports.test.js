@@ -68,7 +68,7 @@ describe('listForAdmin', () => {
     // db.query は mysql2 の [rows, fields] 形式を返す想定。
     // `[[summaryRow]] = await db.query(...)` で受けるため rows 部分を配列でラップする。
     db.query
-      .mockResolvedValueOnce([[{ count: 5, totalMinutes: 480, pending: 2, rejected: 1 }]])
+      .mockResolvedValueOnce([[{ count: 5, totalMinutes: 480, pending: 2, rejected: 1, submitted: 3, missing: 1 }]])
       .mockResolvedValueOnce([[{ total: 2 }]])
       .mockResolvedValueOnce([[{ id: 1 }, { id: 2 }]]);
 
@@ -76,7 +76,7 @@ describe('listForAdmin', () => {
       tenantId: 7, month: '2026-09', dept: '工事部', status: 'approved', page: 1, pageSize: 20
     });
 
-    expect(result.summary).toEqual({ count: 5, totalMinutes: 480, pending: 2, rejected: 1 });
+    expect(result.summary).toEqual({ count: 5, totalMinutes: 480, pending: 2, rejected: 1, submitted: 3, missing: 1 });
     expect(result.total).toBe(2);
     expect(result.items).toEqual([{ id: 1 }, { id: 2 }]);
 
@@ -90,5 +90,21 @@ describe('listForAdmin', () => {
     expect(countParams).toContain('approved');
     expect(itemsParams).toContain('approved');
     expect(summaryParams).not.toContain('approved');
+  });
+
+  it('status=missing は「差戻し以外で作業内容が空」の行だけに絞り込む（DB の status 値は使わない）', async () => {
+    db.query
+      .mockResolvedValueOnce([[{ count: 3, totalMinutes: 0, pending: 1, rejected: 0, submitted: 2, missing: 1 }]])
+      .mockResolvedValueOnce([[{ total: 1 }]])
+      .mockResolvedValueOnce([[{ id: 9 }]]);
+
+    await repo.listForAdmin({ tenantId: 7, month: '2026-09', status: 'missing', page: 1, pageSize: 20 });
+
+    const [countSql, countParams] = db.query.mock.calls[1];
+    const [itemsSql] = db.query.mock.calls[2];
+    expect(countSql).toMatch(/TRIM\(COALESCE\(wr\.work, ''\)\) = ''/);
+    expect(countSql).toMatch(/wr\.status <> 'rejected'/);
+    expect(itemsSql).toMatch(/TRIM\(COALESCE\(wr\.work, ''\)\) = ''/);
+    expect(countParams).not.toContain('missing');
   });
 });

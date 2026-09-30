@@ -33,11 +33,14 @@ function durationMinutes(startTime, endTime) {
   return (eh * 60 + em) - (sh * 60 + sm);
 }
 
+// 作業報告の承認フローは廃止。画面上の状態は 提出済み / 未提出 / 差戻し の3つ。
+// 未提出 = 出勤打刻時に自動作成された行のまま作業内容が空のもの（DB の status は見ない）。
 const STATUS_META = {
-  pending: { label: '承認待ち', style: 'background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;' },
-  approved: { label: '承認済み', style: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;' },
+  submitted: { label: '提出済み', style: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;' },
+  missing: { label: '未提出', style: 'background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;' },
   rejected: { label: '差戻し', style: 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;' }
 };
+const displayStatus = (r) => r.status === 'rejected' ? 'rejected' : (String(r.work || '').trim() ? 'submitted' : 'missing');
 
 // 現場が未入力でも、出勤時に選んだ勤務形態（出社/在宅）が分かればそれを代わりに表示する。
 // 「現場」に対応するworkType('satellite')は本人が現場名を書く前提なのでここでは補わない。
@@ -117,24 +120,32 @@ export async function mount({ content } = {}) {
     const box = root.querySelector('#wrCards');
     if (!box) return;
     const cards = [
-      { label: '報告件数', value: `${summary.count}件` },
+      { label: '提出済み', value: `${summary.submitted || 0}件` },
       { label: '報告時間の合計', value: hm(summary.totalMinutes) },
-      { label: '承認待ち', value: `${summary.pending}件`, warn: summary.pending > 0 },
-      { label: '差戻し', value: `${summary.rejected}件`, danger: summary.rejected > 0 }
+      { label: '未提出（作業内容が未入力）', value: `${summary.missing || 0}件`, danger: (summary.missing || 0) > 0, filter: 'missing' },
+      { label: '差戻し', value: `${summary.rejected}件`, danger: summary.rejected > 0, filter: 'rejected' }
     ];
     box.innerHTML = cards.map(c => `
-      <div style="flex:1;min-width:160px;border:1px solid ${c.danger ? '#fecaca' : '#e2e8f0'};border-radius:10px;padding:18px 20px;background:#fff;">
+      <div ${c.filter ? `data-filter="${c.filter}" title="クリックで絞り込み" ` : ''}style="${c.filter ? 'cursor:pointer;' : ''}flex:1;min-width:160px;border:1px solid ${c.danger ? '#fecaca' : '#e2e8f0'};border-radius:10px;padding:18px 20px;background:#fff;">
         <div style="font-size:26px;font-weight:700;color:${c.danger ? '#991b1b' : '#0f172a'};line-height:1.2;">${escapeHtml(c.value)}</div>
         <div style="font-size:13px;color:#64748b;margin-top:4px;">${escapeHtml(c.label)}</div>
       </div>
     `).join('');
+    // 未提出 / 差戻し のカードをクリックすると、その状態で一覧を絞り込む
+    box.querySelectorAll('[data-filter]').forEach(el => el.addEventListener('click', () => {
+      status = el.dataset.filter;
+      const sel = root.querySelector('#wrStatusFilter');
+      if (sel) sel.value = status;
+      page = 1;
+      loadList();
+    }));
   }
 
   function rowActionsHtml(r) {
     const btnStyle = 'height:30px;padding:0 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-right:6px;';
     const buttons = [];
-    if (r.status === 'pending') {
-      buttons.push(`<button type="button" class="wr-approve-btn" data-id="${r.id}" style="${btnStyle}border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;">承認</button>`);
+    // 承認ボタンは廃止。内容に問題がある提出済みの報告だけ 差戻し できる。
+    if (displayStatus(r) === 'submitted') {
       buttons.push(`<button type="button" class="wr-reject-btn" data-id="${r.id}" style="${btnStyle}border:1px solid #fecaca;background:#fef2f2;color:#991b1b;">差戻し</button>`);
     }
     buttons.push(`<button type="button" class="wr-edit-btn" data-id="${r.id}" style="${btnStyle}border:1px solid #cbd5e1;background:#fff;color:#334155;">編集</button>`);
@@ -151,7 +162,7 @@ export async function mount({ content } = {}) {
     }
     const cellStyle = 'padding:14px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap;color:#334155;';
     body.innerHTML = items.map(r => {
-      const meta = STATUS_META[r.status] || STATUS_META.pending;
+      const meta = STATUS_META[displayStatus(r)];
       const minutes = durationMinutes(r.startTime, r.endTime);
       return `
         <tr>
@@ -202,7 +213,7 @@ export async function mount({ content } = {}) {
       const data = await fetchJSONAuth(`/api/admin/work-reports/list?${qs.toString()}`);
       lastData = data;
       renderClosureBanner(!!data.closed);
-      renderCards(data.summary || { count: 0, totalMinutes: 0, pending: 0, rejected: 0 });
+      renderCards(data.summary || { count: 0, totalMinutes: 0, pending: 0, rejected: 0, submitted: 0, missing: 0 });
       renderTable(data.items || []);
       renderPager(data);
     } catch (err) {
@@ -318,8 +329,8 @@ export async function mount({ content } = {}) {
           <label style="font-size:12px;color:#64748b;font-weight:600;">ステータス</label>
           <select id="wrStatusFilter" style="height:36px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px;font-size:13px;">
             <option value="">すべて</option>
-            <option value="pending">承認待ち</option>
-            <option value="approved">承認済み</option>
+            <option value="submitted">提出済み</option>
+            <option value="missing">未提出</option>
             <option value="rejected">差戻し</option>
           </select>
         </div>

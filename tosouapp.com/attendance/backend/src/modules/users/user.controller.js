@@ -180,6 +180,28 @@ exports.update = async (req, res) => {
       commuteDistanceKm: body.commuteDistanceKm,
       tenantId: req.tenantId || null
     });
+    // 役割を変えたら、ログイン時に実際に使われる tenant_users.role_in_tenant も同じ値にそろえる。
+    // （以前は users.role だけ更新され、tenant_users 側が古い役割のまま残るため、
+    //   画面上「従業員」に戻した社員がマネージャーとして管理画面に入れてしまっていた）
+    // 役割が実際に変わった場合は既存のセッションを無効化し、新しい役割を即時に反映させる。
+    const newRole = String(body.role || '').trim().toLowerCase();
+    if (newRole && req.tenantId) {
+      try {
+        const db = require('../../core/database/mysql');
+        const [[tu]] = await db.query('SELECT role_in_tenant FROM tenant_users WHERE user_id = ? AND tenant_id = ? LIMIT 1', [id, req.tenantId]);
+        const oldTenantRole = tu ? String(tu.role_in_tenant || '').trim().toLowerCase() : null;
+        if (oldTenantRole !== null && oldTenantRole !== newRole) {
+          await db.query('UPDATE tenant_users SET role_in_tenant = ? WHERE user_id = ? AND tenant_id = ?', [newRole, id, req.tenantId]);
+          try { await repo.incrementTokenVersion(id, req.tenantId); } catch (e) { /* silently ignored */ }
+          try { await refreshRepo.deleteUserTokens(id); } catch (e) { /* silently ignored */ }
+          try { invalidateUserCache && await invalidateUserCache(id, req.tenantId); } catch (e) { /* silently ignored */ }
+          try {
+            const auditRepo = require('../audit/audit.repository');
+            await auditRepo.writeLog({ userId: req.user?.id, action: 'admin_employee_tenant_role_sync', path: req.path, method: req.method, ip: req.ip, userAgent: req.headers['user-agent'], beforeData: JSON.stringify({ userId: id, tenantId: req.tenantId, role_in_tenant: oldTenantRole }), afterData: JSON.stringify({ role_in_tenant: newRole }) });
+          } catch (e) { /* silently ignored */ }
+        }
+      } catch (e) { /* tenant_users が無い環境では users.role のみ */ }
+    }
     res.status(200).json({ id });
   } catch (err) {
     res.status(500).json({ message: err.message });

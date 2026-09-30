@@ -150,6 +150,15 @@ router.get('/employees/:id', permit('employees','view'), async (req, res) => {
     // Verify employee belongs to current tenant
     const row = await userRepo.getUserById(id, req.tenantId || null);
     if (!row) return res.status(404).json({ message: 'Employee not found' });
+    // ログイン時に実際に使われる役割は tenant_users.role_in_tenant（users.role より優先）。
+    // 編集画面がこれを表示しないと、画面上は「従業員」なのに実際はマネージャーとしてログインできる、
+    // という食い違いが見えなくなるため、tenant_role として一緒に返す。
+    if (req.tenantId) {
+      try {
+        const [[tu]] = await db.query('SELECT role_in_tenant FROM tenant_users WHERE user_id = ? AND tenant_id = ? LIMIT 1', [id, req.tenantId]);
+        if (tu && tu.role_in_tenant) row.tenant_role = String(tu.role_in_tenant).trim().toLowerCase();
+      } catch (e) { /* tenant_users が無い環境では users.role のみ */ }
+    }
     res.status(200).json(row);
   } catch (err) {
     res.status(500).json({ message: err.message });

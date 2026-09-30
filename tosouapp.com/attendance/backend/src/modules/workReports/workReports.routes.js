@@ -52,7 +52,8 @@ router.post('/', authorize('employee', 'manager', 'admin'), async (req, res) => 
       const daily = await attendanceRepo.getDaily(userId, date).catch(() => null);
       return res.status(200).json({ date, report: saved, daily, duplicate: true });
     }
-    const insertId = await repo.create({ userId, date, workType, site, work, status: 'pending' });
+    // 作業報告の承認フローは廃止: 提出した時点で確定（approved）。問題があれば管理者が 差戻し する。
+    const insertId = await repo.create({ userId, date, workType, site, work, status: 'approved' });
     const saved = await repo.getById(insertId);
     const daily = await attendanceRepo.getDaily(userId, date).catch(() => null);
     res.status(201).json({ date, report: saved, daily });
@@ -62,8 +63,7 @@ router.post('/', authorize('employee', 'manager', 'admin'), async (req, res) => 
 });
 
 // 自分の作業報告を編集する（出勤打刻時に自動生成された空の行に、後から現場・作業内容を
-// 入力する場合など）。承認/差戻しのステータスはここでは一切変更しない — 内容を入力しても
-// 自動承認にはならず、管理者/マネージャーが別途 承認 を押すまで 承認待ち のまま。
+// 入力する場合など）。承認フローは廃止したので、作業内容が入っていれば 提出済み（approved）になる。
 router.patch('/:id', authorize('employee', 'manager', 'admin'), async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -87,20 +87,14 @@ router.patch('/:id', authorize('employee', 'manager', 'admin'), async (req, res)
     if (work !== undefined && !work) {
       return res.status(400).json({ message: 'Missing work' });
     }
-    const contentChanged =
-      (site !== undefined && site !== String(existing.site || '').trim()) ||
-      (work !== undefined && work !== String(existing.work || '').trim());
     await repo.update(id, { workType, site, work }, { ownerUserId: userId });
-    // 承認済みの報告の内容 (現場・作業内容) を書き換えた場合は、承認済みのまま残さず承認待ちに戻す
-    // (承認後に内容だけ変わるのを防ぐ)。内容が同じ再保存では状態を変えない。
-    if (existing.status === 'approved' && contentChanged) {
-      await repo.setStatus(id, 'pending', { approvedBy: null, rejectedReason: null });
-    }
-    // 差戻し(rejected)だった報告を編集した場合は、修正して出し直した扱いにする —
-    // 承認待ちに戻して再度レビュー対象にする（内容を直しても差戻しのままだと
-    // 管理者の一覧に二度と出てこない = 見落としの原因になるため）。
-    if (existing.status === 'rejected') {
-      await repo.setStatus(id, 'pending', { approvedBy: null, rejectedReason: null });
+    // 作業内容が入っていれば 提出済み（approved）にする:
+    //  - 自動生成された空の行（pending）に内容を入れた → 提出
+    //  - 差戻し(rejected)の報告を直した → 再提出（差戻し理由は消す）
+    // 既に approved の報告は内容を書き換えても approved のまま（承認待ちには戻さない）。
+    const finalWork = work !== undefined ? work : String(existing.work || '').trim();
+    if (finalWork && existing.status !== 'approved') {
+      await repo.setStatus(id, 'approved', { approvedBy: null, rejectedReason: null });
     }
     const saved = await repo.getById(id);
     res.status(200).json({ report: saved });

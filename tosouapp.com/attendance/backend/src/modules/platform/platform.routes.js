@@ -357,10 +357,32 @@ router.patch('/tenants/:id/users/:userId', async (req, res) => {
     if (!role_in_tenant || !validRoles.includes(role_in_tenant)) {
       return res.status(400).json({ message: `role_in_tenant must be one of: ${validRoles.join(', ')}` });
     }
+    const [[beforeRow]] = await db.query(
+      'SELECT role_in_tenant FROM tenant_users WHERE user_id = ? AND tenant_id = ? LIMIT 1',
+      [userId, tenantId]
+    );
     await db.query(
       'UPDATE tenant_users SET role_in_tenant = ? WHERE user_id = ? AND tenant_id = ?',
       [role_in_tenant, userId, tenantId]
     );
+    // ログインは tenant_users.role_in_tenant、トークン更新(refresh)と会社側の社員編集画面は users.role を
+    // 見ているため、片方だけ変えると画面ごとに役割が食い違い、権限も時間経過で入れ替わってしまう。
+    // その会社にだけ所属する社員なら users.role も同じ値にそろえる（owner/payroll は users.role に無いので対象外）。
+    const roleChanged = !beforeRow || String(beforeRow.role_in_tenant || '') !== role_in_tenant;
+    if (roleChanged) {
+      if (['employee', 'manager', 'admin'].includes(role_in_tenant)) {
+        try {
+          const [[cnt]] = await db.query('SELECT COUNT(*) AS c FROM tenant_users WHERE user_id = ?', [userId]);
+          if (Number(cnt?.c || 0) <= 1) {
+            await db.query('UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?', [role_in_tenant, userId, tenantId]);
+          }
+        } catch (e) { /* silently ignored */ }
+      }
+      // 変更前の役割のまま使われ続けないよう、既存セッションを無効化する
+      try { await db.query('UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?', [userId]); } catch (e) { /* silently ignored */ }
+      try { await require('../auth/refresh.repository').deleteUserTokens(userId); } catch (e) { /* silently ignored */ }
+      try { await require('../../core/middleware/authMiddleware').invalidateUserCache(userId, tenantId); } catch (e) { /* silently ignored */ }
+    }
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
