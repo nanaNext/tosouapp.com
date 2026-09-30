@@ -355,7 +355,7 @@
     var send = el('button', 'igb-send', '送信'); send.type = 'button';
     form.appendChild(input); form.appendChild(send);
     panel.appendChild(head); panel.appendChild(log); panel.appendChild(form);
-    var wrap = el('div', 'igb-wrap'); wrap.appendChild(fab);
+    var wrap = el('div', 'igb-wrap'); wrap.appendChild(fab); wrap.style.visibility = 'hidden';
     var dis = el('button', 'igb-dis', '×'); dis.type = 'button'; dis.setAttribute('aria-label', 'ヘルプを隠す'); wrap.appendChild(dis);
     var tip = el('div', 'igb-tip', '');
     document.body.appendChild(wrap); document.body.appendChild(panel); document.body.appendChild(tip);
@@ -382,8 +382,6 @@
       tip.classList.add('igb-show');
     }
     refreshTip = function () { if (tip.classList.contains('igb-show')) tip.textContent = greeting(); };
-    setTimeout(showTip, 800);
-    setTimeout(hideTip, 10800);   // あいさつは10秒で引っ込める（画面の邪魔にならないように）
     setInterval(refreshTip, 60000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) loadStatus(); });
     tip.addEventListener('click', function () { open(); });
@@ -620,15 +618,27 @@
       cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
       return { canvas: cv, shadow: shadow, wake: wake, wasDragged: function () { return dragged; } };
     }
+    // 3Dの猫の準備ができてから表示する（先に2Dの猫が出て、あとで3Dに入れ替わるのを防ぐ）。
+    // 3Dが使えない・読み込みが遅い（4秒）ときだけ2Dの猫を出す
+    var revealed = false;
+    function reveal() {
+      if (revealed) return; revealed = true;
+      wrap.style.visibility = '';
+      setTimeout(showTip, 400);
+      setTimeout(hideTip, 10400);   // あいさつは10秒で引っ込める（画面の邪魔にならないように）
+    }
     function upgrade3D() {
       function go() {
+        if (revealed) return;   // もう2Dで表示済みなら入れ替えない
         var m;
-        try { m = make3D(window.THREE); } catch (e) { return; }
+        try { m = make3D(window.THREE); } catch (e) { reveal(); return; }
         mascot3d = m; fab.innerHTML = ''; fab.appendChild(m.canvas); fab.appendChild(m.shadow); m.wake();
+        reveal();
       }
+      setTimeout(reveal, 4000);
       if (window.THREE) { go(); return; }
       var sc = document.createElement('script');
-      sc.src = CONFIG.threeUrl; sc.async = true; sc.onload = go; document.head.appendChild(sc);
+      sc.src = CONFIG.threeUrl; sc.async = true; sc.onload = go; sc.onerror = reveal; document.head.appendChild(sc);
       document.addEventListener('visibilitychange', function () { if (mascot3d) mascot3d.wake(); });
     }
     upgrade3D();
