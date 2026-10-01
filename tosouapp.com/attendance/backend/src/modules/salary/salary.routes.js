@@ -10,13 +10,15 @@ const { companyName } = require('../../config/env');
 const db = require('../../core/database/mysql');
 const s3Service = require('../../core/services/s3.service');
 
-router.get('/my', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+router.get('/my', authenticate, resolveTenant, authorize('employee','manager','admin'), async (req, res) => {
   try {
     const month = req.query.month;
     if (!month) return res.status(400).json({ message: 'Missing month' });
+
+    const tid = req.tenantId || null;
     
     // Check if published
-    const input = await salaryInputRepo.getByUserMonth(req.user.id, month);
+    const input = await salaryInputRepo.getByUserMonth(req.user.id, month, tid);
     if (!input || !input.is_published) {
       // Return 200 with a specific format so the frontend can display a friendly message
       // without triggering global HTTP error handlers
@@ -26,19 +28,20 @@ router.get('/my', authenticate, authorize('employee','manager','admin'), async (
     const today = new Date();
     const pad = n => String(n).padStart(2, '0');
     const issueDate = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-${pad(today.getUTCDate())}`;
-    const { employees } = await salaryService.computePayslips([req.user.id], month);
+    const { employees } = await salaryService.computePayslips([req.user.id], month, tid);
     res.status(200).json({ companyName, issueDate, month, employees });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-router.get('/my/published', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+router.get('/my/published', authenticate, resolveTenant, authorize('employee','manager','admin'), async (req, res) => {
   try {
-    const deliveries = await payslipDeliveryRepo.list({ userId: req.user.id, month: null, limit: 500 });
-    
+    const tid = req.tenantId || null;
+    const deliveries = await payslipDeliveryRepo.list({ userId: req.user.id, month: null, limit: 500, tenantId: tid });
+
     // Also fetch the published status from salary_inputs to ensure they are still published
-    const publishedInputs = await salaryInputRepo.listPublishedByUser(req.user.id);
+    const publishedInputs = await salaryInputRepo.listPublishedByUser(req.user.id, tid);
 
     const latestByMonth = new Map();
     for (const row of deliveries) {
@@ -76,13 +79,14 @@ router.get('/my/published', authenticate, authorize('employee','manager','admin'
   }
 });
 
-router.post('/my/read', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+router.post('/my/read', authenticate, resolveTenant, authorize('employee','manager','admin'), async (req, res) => {
   try {
     const month = req.body.month;
     if (!month) return res.status(400).json({ message: 'Missing month' });
-    
+
+    const tid = req.tenantId || null;
     // Get all deliveries for this user and month
-    const deliveries = await payslipDeliveryRepo.list({ userId: req.user.id, month, limit: 500 });
+    const deliveries = await payslipDeliveryRepo.list({ userId: req.user.id, month, limit: 500, tenantId: tid });
     for (const d of deliveries) {
       if (!d.is_read) {
         await payslipDeliveryRepo.markAsRead(d.id);
@@ -94,38 +98,40 @@ router.post('/my/read', authenticate, authorize('employee','manager','admin'), a
   }
 });
 
-router.get('/my/:year/:month', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+router.get('/my/:year/:month', authenticate, resolveTenant, authorize('employee','manager','admin'), async (req, res) => {
   try {
     const y = req.params.year;
     const m = req.params.month;
     const month = `${y}-${String(m).padStart(2,'0')}`;
+    const tid = req.tenantId || null;
 
     // Check if published
-    const input = await salaryInputRepo.getByUserMonth(req.user.id, month);
+    const input = await salaryInputRepo.getByUserMonth(req.user.id, month, tid);
     if (!input || !input.is_published) {
       return res.status(200).json({ notPublished: true, message: '給与明細はまだ公開されていません' });
     }
 
-    const { employees } = await salaryService.computePayslips([req.user.id], month);
+    const { employees } = await salaryService.computePayslips([req.user.id], month, tid);
     res.status(200).json(employees[0]);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-router.get('/me/:year/:month/download', authenticate, authorize('employee','manager','admin'), async (req, res) => {
+router.get('/me/:year/:month/download', authenticate, resolveTenant, authorize('employee','manager','admin'), async (req, res) => {
   try {
     const y = req.params.year;
     const m = req.params.month;
     const month = `${y}-${String(m).padStart(2,'0')}`;
+    const tid = req.tenantId || null;
 
     // Check if published
-    const input = await salaryInputRepo.getByUserMonth(req.user.id, month);
+    const input = await salaryInputRepo.getByUserMonth(req.user.id, month, tid);
     if (!input || !input.is_published) {
       return res.status(200).json({ notPublished: true, message: '給与明細はまだ公開されていません' });
     }
 
-    const row = await payslipRepo.findLatestByUserMonth(req.user.id, month);
+    const row = await payslipRepo.findLatestByUserMonth(req.user.id, month, tid);
     if (!row) return res.status(404).json({ message: 'PDFが見つかりません' });
     res.status(200).json({ secureUrl: `/api/payslips/me/file/${row.id}` });
   } catch (err) {
@@ -165,7 +171,7 @@ router.get('/admin/export.xlsx', authenticate, resolveTenant, authorize('admin',
     }
 
     const userIds = inputRows.map(r => r.userId);
-    const { employees } = await salaryService.computePayslips(userIds, month);
+    const { employees } = await salaryService.computePayslips(userIds, month, tenantId);
 
     // Build index by userId for easy lookup
     const empMap = new Map(employees.map(e => [e.userId, e]));

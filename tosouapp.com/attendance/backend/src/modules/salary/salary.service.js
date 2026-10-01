@@ -117,9 +117,9 @@ async function computePayslipForUser(userId, month, options = null, tenantId = n
   const year = y;
   const [user, dailyRows, attendanceRows, approvedLeaveRows, conf, userComp] = await Promise.all([
     userRepo.getUserById(userId),
-    attendanceRepo.listDailyBetween(userId, from, to).catch(() => []),
-    attendanceRepo.listByUserBetween(userId, from, to).catch(() => []),
-    leaveRepo.listApprovedByUserOverlap(userId, from, to).catch(() => []),
+    attendanceRepo.listDailyBetween(userId, from, to, { tenantId }).catch(() => []),
+    attendanceRepo.listByUserBetween(userId, from, to, { tenantId }).catch(() => []),
+    leaveRepo.listApprovedByUserOverlap(userId, from, to, tenantId).catch(() => []),
     salaryRepo.getConfigByYear(year, tenantId),
     salaryRepo.getUserCompensation(userId)
   ]);
