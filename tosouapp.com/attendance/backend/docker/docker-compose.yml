@@ -19,17 +19,19 @@ services:
       # SECURITY: DB_PASSWORD must be set in .env — no default fallback to avoid accidental weak passwords
       - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
       - DB_NAME=attendance_db
-      # Redis is optional — if REDIS_URL is not set, app uses in-memory fallback automatically.
-      # To enable Redis: set REDIS_URL=redis://:yourpassword@redis:6379 and uncomment the redis service.
-      # - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - COMPANY_NAME=飯塚塗研株式会社
       - JWT_SECRET_CURRENT=${JWT_SECRET_CURRENT}
       - JWT_SECRET_PREVIOUS=${JWT_SECRET_PREVIOUS}
       - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
       - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD}
       # CSRF is ON by default in security.js. Set DISABLE_CSRF=true only for API-only deployments.
+      # PERF: Workers run in a separate container (see 'worker' service below).
+      - DISABLE_EMBEDDED_WORKER=true
+      # PERF: Redis enabled — rate limiting + BullMQ queue use Redis instead of in-memory fallback.
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     depends_on:
       - db
+      - redis
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/ping',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
@@ -81,13 +83,42 @@ services:
     volumes:
       - db_data:/var/lib/mysql
 
-  # redis:  ← uncomment this entire block if you want to enable Redis
-  #   image: redis:alpine
-  #   container_name: attendance-redis
-  #   restart: always
-  #   # SECURITY: no ports mapping — Redis is only accessible within the internal Docker network
-  #   # SECURITY: always set a strong REDIS_PASSWORD
-  #   command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--save", "", "--appendonly", "no"]
+  redis:
+    image: redis:7-alpine
+    container_name: attendance-redis
+    restart: always
+    # SECURITY: no ports mapping — Redis is only accessible within the internal Docker network
+    # SECURITY: always set a strong REDIS_PASSWORD in .env
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # PERF: Worker process runs separately — BullMQ email + attendance-summary workers
+  # are isolated from the web process so heavy batch jobs don't affect API response times.
+  worker:
+    build:
+      context: ../../..
+      dockerfile: attendance/backend/docker/Dockerfile
+    container_name: attendance-worker
+    restart: always
+    command: ["node", "attendance/backend/src/workers/index.js"]
+    volumes:
+      - uploads:/app/attendance/backend/src/uploads
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+      - DB_NAME=attendance_db
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - JWT_SECRET_CURRENT=${JWT_SECRET_CURRENT}
+      - JWT_SECRET_PREVIOUS=${JWT_SECRET_PREVIOUS}
+    depends_on:
+      - db
+      - redis
 
   nginx:
     image: nginx:1.25-alpine

@@ -1,5 +1,6 @@
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const fs = require('fs');
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
@@ -39,6 +40,34 @@ async function uploadToR2(key, body, contentType = 'application/octet-stream') {
     return true;
   } catch (error) {
     console.error('S3 Upload Error:', error);
+    return false;
+  }
+}
+
+/**
+ * Uploads a file from disk to R2 using a stream — avoids loading the entire
+ * file into memory (important for large DB backup SQL files).
+ * @param {string} key - The file path/name in the bucket
+ * @param {string} filePath - Absolute path to the file on disk
+ * @param {string} contentType - The MIME type
+ * @returns {Promise<boolean>}
+ */
+async function uploadFileToR2(key, filePath, contentType = 'application/octet-stream') {
+  if (!s3Client) return false;
+  try {
+    const stat = fs.statSync(filePath);
+    const stream = fs.createReadStream(filePath);
+    const command = new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+      Body: stream,
+      ContentLength: stat.size,
+      ContentType: contentType,
+    });
+    await s3Client.send(command);
+    return true;
+  } catch (error) {
+    console.error('S3 Stream Upload Error:', error);
     return false;
   }
 }
@@ -96,6 +125,7 @@ function isR2Configured() {
 
 module.exports = {
   uploadToR2,
+  uploadFileToR2,
   downloadFromR2,
   deleteFromR2,
   isR2Configured

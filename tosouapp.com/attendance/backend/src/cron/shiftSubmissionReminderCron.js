@@ -59,10 +59,36 @@ async function processMonthlyShiftReminders() {
             statusMap.set(row.userId, row.status);
         });
 
+        // PERF: 重複チェックを1つのIN句でまとめて取得 — ループ内の per-user SELECT を排除する。
+        // users 配列は既に未提出者のみにフィルタ済みなので、対象件数は多くない。
+        const pendingUserIds = users
+            .filter(u => { const s = statusMap.get(u.id); return s !== 'PENDING' && s !== 'APPROVED'; })
+            .map(u => u.id);
+
+        let alreadyNotifiedSet = new Set();
+        if (pendingUserIds.length > 0) {
+            const placeholders = pendingUserIds.map(() => '?').join(',');
+            const [alreadyNotified] = await db.query(
+                `SELECT target_user_id FROM notices 
+                 WHERE target_user_id IN (${placeholders})
+                   AND target_month = ?
+                   AND kind = 'system'
+                   AND title = 'シフト提出リマインド'`,
+                [...pendingUserIds, targetMonthStr]
+            );
+            alreadyNotifiedSet = new Set((alreadyNotified || []).map(r => r.target_user_id));
+        }
+
         for (const user of users) {
             const status = statusMap.get(user.id);
             // Nếu đã nộp (PENDING) hoặc đã được duyệt (APPROVED), không nhắc nữa
             if (status === 'PENDING' || status === 'APPROVED') continue;
+
+            // PERF: kiểm tra duplicate từ batch query đã có sẵn, không SELECT riêng từng user
+            if (alreadyNotifiedSet.has(user.id)) {
+                console.log(`[ShiftReminderCron] Đã có thông báo cho user ${user.id} tháng ${targetMonthStr}. Bỏ qua.`);
+                continue;
+            }
 
             const isSeishain = user.employment_type === 'full_time' || user.employment_type === '正社員';
             const appUrl = process.env.APP_URL || 'https://tosouapp.com/';
@@ -181,21 +207,6 @@ ${contact.html}</p>
             }
 
             try {
-                // Kiểm tra đã có thông báo cho user này trong tháng này chưa (tránh duplicate)
-                const [existing] = await db.query(
-                    `SELECT id FROM notices 
-                     WHERE target_user_id = ? 
-                       AND target_month = ?
-                       AND kind = 'system'
-                       AND title = 'シフト提出リマインド'
-                     LIMIT 1`,
-                    [user.id, targetMonthStr]
-                );
-                if (existing && existing.length > 0) {
-                    console.log(`[ShiftReminderCron] Đã có thông báo cho user ${user.id} tháng ${targetMonthStr}. Bỏ qua.`);
-                    continue;
-                }
-
                 // Tạo thông báo trong app (Cái chuông)
                 await noticesRepo.createNotice({
                     targetUserId: user.id,

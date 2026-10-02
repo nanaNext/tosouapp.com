@@ -22,19 +22,52 @@ function initAutoGrantScheduler() {
     const userRepo = require('./modules/users/user.repository');
     const { ensureUserGrants } = require('./modules/leave/leave.controller');
     let lastRunDay = null;
+    let running = false; // Chống chạy đồng thời nhiều lần
+
+    // Trì hoãn khởi chạy lần đầu 60 giây sau khi server start,
+    // để tránh gây spike DB ngay khi vừa boot lên.
+    const STARTUP_DELAY_MS = 60 * 1000;
+    // Độ trễ giữa mỗi user trong batch để tránh flood DB connection pool.
+    const BETWEEN_USERS_DELAY_MS = 50;
+    // Chỉ xử lý nhân viên active, tránh load toàn bộ bảng users.
+    const AUTO_GRANT_BATCH_SIZE = Number(process.env.AUTO_GRANT_BATCH_SIZE || '0') || 0;
+
     async function run() {
+      if (running) {
+        console.log('[auto-grant] Đang chạy, bỏ qua lần trigger này.');
+        return;
+      }
+      running = true;
       try {
-        const users = await userRepo.listUsers();
+        // Chỉ lấy nhân viên active thay vì SELECT * FROM users không giới hạn
+        const { rows: users } = await userRepo.listUsersPaged({
+          role: 'employee',
+          employmentStatus: 'active',
+          limit: AUTO_GRANT_BATCH_SIZE > 0 ? AUTO_GRANT_BATCH_SIZE : 5000,
+        });
+        let processed = 0;
         for (const u of users) {
           try { await ensureUserGrants(u.id); } catch (e) { /* silently ignored */ }
+          processed++;
+          // Yield giữa mỗi user để tránh chiếm hết connection pool
+          if (BETWEEN_USERS_DELAY_MS > 0 && processed % 10 === 0) {
+            await new Promise(r => setTimeout(r, BETWEEN_USERS_DELAY_MS));
+          }
         }
         lastRunDay = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-        console.log('[auto-grant] completed for day', lastRunDay);
+        console.log(`[auto-grant] completed for day ${lastRunDay} (${processed} users)`);
       } catch (err) {
         console.error('[auto-grant] error', err && err.message);
+      } finally {
+        running = false;
       }
     }
-    run();
+
+    // Trì hoãn lần chạy đầu tiên để tránh spike khi server vừa khởi động
+    setTimeout(() => {
+      run();
+    }, STARTUP_DELAY_MS);
+
     setInterval(() => {
       const jst = new Date(Date.now() + 9 * 3600 * 1000);
       const day = jst.toISOString().slice(0, 10);

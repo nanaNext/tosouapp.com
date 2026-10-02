@@ -178,16 +178,22 @@ async function checkAndSendAlerts(summary, { tenantId = null, isCurrentMonth = f
 
 // テナント内の active な社員全員について、指定月を再計算 + アラート判定する。
 // 深夜バッチからも、管理画面の手動実行ボタンからも、この1つの関数を呼ぶ。
+// PERF: ユーザー間に小さな yield を入れることで DB connection pool を飽和させない。
 async function runRecomputeForTenant({ tenantId = null, year, month, sendAlerts = true } = {}) {
   const now = new Date(Date.now() + 9 * 3600 * 1000); // JST
   const isCurrentMonth = now.getUTCFullYear() === year && (now.getUTCMonth() + 1) === month;
   const dayOfMonth = isCurrentMonth ? now.getUTCDate() : null;
   const lastDay = _lastDay(year, month);
 
+  // PERF: バッチ間の yield 間隔 (ms)。0 で無効化。環境変数で調整可能。
+  const yieldEvery = Number(process.env.BATCH_RECOMPUTE_YIELD_EVERY || '10');
+  const yieldMs = Number(process.env.BATCH_RECOMPUTE_YIELD_MS || '20');
+
   const { rows: users } = await userRepo.listUsersPaged({ role: 'employee', employmentStatus: 'active', tenantId, limit: 5000 });
   const results = [];
   let alertsSent = 0;
-  for (const u of users) {
+  for (let i = 0; i < users.length; i++) {
+    const u = users[i];
     try {
       const summary = await recomputeMonthlySummary(u.id, year, month, tenantId);
       results.push({ userId: u.id, judgement: summary.judgement });
@@ -197,6 +203,10 @@ async function runRecomputeForTenant({ tenantId = null, year, month, sendAlerts 
       }
     } catch (err) {
       results.push({ userId: u.id, error: err.message });
+    }
+    // Yield 定期的に event loop を解放して DB pool を飽和させない
+    if (yieldMs > 0 && yieldEvery > 0 && (i + 1) % yieldEvery === 0) {
+      await new Promise(r => setTimeout(r, yieldMs));
     }
   }
   return { year, month, total: users.length, alertsSent, results };
@@ -209,12 +219,19 @@ async function runNightlyBatch({ tenantId = null } = {}) {
   const currentYear = now.getUTCFullYear();
   const currentMonth = now.getUTCMonth() + 1;
 
+  const yieldMs = Number(process.env.BATCH_RECOMPUTE_YIELD_MS || '20');
+
   const dirtyRows = await summaryRepo.listDirty(tenantId, 2000);
   const dirtyDone = new Set();
-  for (const row of dirtyRows) {
+  for (let i = 0; i < dirtyRows.length; i++) {
+    const row = dirtyRows[i];
     const key = `${row.year}-${row.month}`;
     dirtyDone.add(key);
     try { await recomputeMonthlySummary(row.user_id, row.year, row.month, tenantId); } catch (e) { /* 次回リトライに任せる */ }
+    // Yield 定期的に event loop を解放して DB pool を飽和させない
+    if (yieldMs > 0 && (i + 1) % 10 === 0) {
+      await new Promise(r => setTimeout(r, yieldMs));
+    }
   }
   const currentMonthResult = await runRecomputeForTenant({ tenantId, year: currentYear, month: currentMonth, sendAlerts: true });
   return { dirtyProcessed: dirtyRows.length, currentMonth: currentMonthResult };

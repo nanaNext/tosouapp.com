@@ -87,15 +87,15 @@ async function runAutoBackup() {
         // 2. Đẩy lên R2 ngay — đây là lớp lưu trữ THẬT, sống sót qua mọi lần
         // deploy (không như ổ đĩa local của service). Làm trước bước email để
         // dù email có thất bại, bản backup vẫn đã an toàn ở nơi khác.
+        // PERF: dùng stream thay vì readFileSync để tránh load toàn bộ file vào RAM.
         let uploadedToR2 = false;
         if (s3Service.isR2Configured()) {
             try {
-                const fileBuffer = fs.readFileSync(backupFilePath);
-                uploadedToR2 = await s3Service.uploadToR2(`${R2_BACKUP_PREFIX}/${backupFileName}`, fileBuffer, 'application/sql');
+                uploadedToR2 = await s3Service.uploadFileToR2(`${R2_BACKUP_PREFIX}/${backupFileName}`, backupFilePath, 'application/sql');
                 if (uploadedToR2) {
                     console.log(`[Cron Job] Đã lưu backup lên R2: ${R2_BACKUP_PREFIX}/${backupFileName}`);
                 } else {
-                    console.error('[Cron Job] uploadToR2 trả về false — backup CHƯA được lưu bền.');
+                    console.error('[Cron Job] uploadFileToR2 trả về false — backup CHƯA được lưu bền.');
                 }
             } catch (r2Error) {
                 console.error('[Cron Job] Lỗi khi đẩy backup lên R2:', r2Error);
