@@ -537,11 +537,12 @@
       var rim = new T.DirectionalLight(0xbfe6ff, 0.35); rim.position.set(-4, 2, -5); scene.add(rim);
 
       function hex(c) { return parseInt(String(c).replace('#', ''), 16); }
-      function mat(c, r, m) { return new T.MeshStandardMaterial({ color: c, roughness: r, metalness: m || 0 }); }
+      // 軽い Lambert 材質（Standard より描画が速い）。目と鈴だけ少し光らせる
+      function mat(c, r, m) { return r < 0.4 ? new T.MeshPhongMaterial({ color: c, shininess: m ? 80 : 40 }) : new T.MeshLambertMaterial({ color: c }); }
       var fur = mat(hex(FUR), 0.7), orange = mat(hex(PATCH), 0.7), cream = mat(0xfff3e0, 0.7), pink = mat(0xffb3c1, 0.8), padPink = mat(0xff9fb0, 0.8),
           dark = mat(0x22140e, 0.25), white = mat(0xffffff, 0.3), brown = mat(0x7a5341, 0.6), red = mat(0xd7333a, 0.45), gold = mat(0xf2c230, 0.3, 0.6),
-          blush = new T.MeshStandardMaterial({ color: 0xff9fb0, roughness: 0.9, transparent: true, opacity: 0.75 });
-      function S(r) { return new T.SphereGeometry(r, 32, 24); }
+          blush = new T.MeshLambertMaterial({ color: 0xff9fb0, transparent: true, opacity: 0.75 });
+      function S(r) { return new T.SphereGeometry(r, 24, 16); }
       function M(g, m, x, y, z, sx, sy, sz) {
         var o = new T.Mesh(g, m); o.position.set(x || 0, y || 0, z || 0);
         if (sx) o.scale.set(sx, sy, sz); return o;
@@ -587,24 +588,35 @@
       var shadow = document.createElement('span');
       shadow.className = 'igb-shadow';
 
+      // 動くのは「表示直後・マウスを乗せた・触った」あと ACTIVE_MS だけ。あとは止まって描画もしない（画面が重くならないように）
+      var ACTIVE_MS = 10000, FRAME_MS = 1000 / 30;
       var ry = 0, vel = 0, drag = false, dragged = false, sx = 0, lx = 0, animating = false, t0 = performance.now();
+      var activeUntil = 0, amp = 0, last = 0;
       function frame(now) {
         animating = false;
-        var idle = document.hidden || hidden || panel.classList.contains('igb-open');
-        if (idle && !drag && Math.abs(vel) < 0.002) { renderer.render(scene, cam); return; }
-        var t = (now - t0) / 1000, k = reduce ? 0 : 1;
+        var idle = document.hidden || hidden || panel.classList.contains('igb-open') || now > activeUntil;
+        amp += ((idle ? 0 : 1) - amp) * 0.12;   // 止まるときは動きを小さくしてから止める（カクッと止まらないように）
+        var settled = idle && amp < 0.01 && !drag && Math.abs(vel) < 0.002;
+        if (!settled && now - last < FRAME_MS) { animating = true; requestAnimationFrame(frame); return; }   // 30fps に間引く
+        last = now;
+        var t = (now - t0) / 1000, k = (reduce ? 0 : 1) * (settled ? 0 : amp);
         var a = ((ry + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
-        if (!drag) { ry += vel; vel *= 0.92; if (!idle) ry += (Math.sin(t * 0.7) * 0.5 * k - a) * 0.035; }
+        if (!drag) { ry += vel; vel *= 0.92; ry += (Math.sin(t * 0.7) * 0.5 * k - a) * 0.035; }
         root.rotation.y = ry;
         var b = Math.sin(t * 2.6);
         hero.position.y = b * 0.12 * k; hero.rotation.z = Math.sin(t * 1.3) * 0.03 * k;
         arm.rotation.z = -0.55 + Math.sin(t * 5.2) * 0.3 * k;
-        var bl = (t % 3.6) > 3.5 ? 0.1 : 1; eyes.forEach(function (g) { g.scale.y = bl; });
+        var bl = (!settled && (t % 3.6) > 3.5) ? 0.1 : 1; eyes.forEach(function (g) { g.scale.y = bl; });
         shadow.style.transform = 'scale(' + (1 - (b * k + 1) * 0.14).toFixed(3) + ')';
         renderer.render(scene, cam);
+        if (settled) return;
         animating = true; requestAnimationFrame(frame);
       }
-      function wake() { if (!animating) { animating = true; requestAnimationFrame(frame); } }
+      function wake() {
+        activeUntil = performance.now() + ACTIVE_MS;
+        if (!animating) { animating = true; requestAnimationFrame(frame); }
+      }
+      cv.addEventListener('pointerenter', wake);
       cv.addEventListener('pointerdown', function (e) {
         drag = true; dragged = false; sx = lx = e.clientX; vel = 0;
         try { cv.setPointerCapture(e.pointerId); } catch (x) {}
@@ -643,7 +655,12 @@
       sc.src = CONFIG.threeUrl; sc.async = true; sc.onload = go; sc.onerror = reveal; document.head.appendChild(sc);
       document.addEventListener('visibilitychange', function () { if (mascot3d) mascot3d.wake(); });
     }
-    upgrade3D();
+    // three.js（約600KB）は画面の読み込みが終わって手が空いてから読む（画面の表示を遅らせないように）
+    function whenIdle(fn) {
+      function later() { if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: 1500 }); else setTimeout(fn, 200); }
+      if (document.readyState === 'complete') later(); else window.addEventListener('load', later, { once: true });
+    }
+    whenIdle(upgrade3D);
     loadStatus();
   }
 
