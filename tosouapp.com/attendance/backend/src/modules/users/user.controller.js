@@ -1,4 +1,5 @@
 const repo = require('./user.repository');
+const deptChange = require('../departments/department.change.service');
 const bcrypt = require('bcrypt');
 const { bcryptRounds } = require('../../config/env');
 const { invalidateUserCache } = require('../../core/middleware/authMiddleware');
@@ -142,7 +143,16 @@ exports.update = async (req, res) => {
         return res.status(409).json({ message: 'Email already in use' });
       }
     }
-    await repo.updateUser(id, {
+    // 部署を変えたときは異動履歴も自動で記録する（過去の月は元の部署のまま集計されるように）
+    const before = await repo.getUserById(id, req.tenantId || null);
+    if (!before) return res.status(404).json({ message: 'User not found' });
+    await deptChange.saveWithDepartmentChange({
+      before,
+      toDepartmentId: body.departmentId,
+      effectiveDate: body.departmentEffectiveDate,
+      actorId: req.user?.id || null,
+      tenantId: req.tenantId || null,
+      save: () => repo.updateUser(id, {
       employeeCode: body.employeeCode,
       username: body.username,
       email: body.email,
@@ -179,6 +189,7 @@ exports.update = async (req, res) => {
       commuteMethod: body.commuteMethod,
       commuteDistanceKm: body.commuteDistanceKm,
       tenantId: req.tenantId || null
+    })
     });
     // 役割を変えたら、ログイン時に実際に使われる tenant_users.role_in_tenant も同じ値にそろえる。
     // （以前は users.role だけ更新され、tenant_users 側が古い役割のまま残るため、
@@ -204,7 +215,7 @@ exports.update = async (req, res) => {
     }
     res.status(200).json({ id });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(Number(err?.status || 500)).json({ message: err.message });
   }
 };
 // API: Vô hiệu hóa (xóa mềm) tài khoản nhân viên
@@ -237,10 +248,16 @@ exports.setDepartment = async (req, res) => {
     const id = req.params.id;
     const { departmentId } = req.body || {};
     if (!id || !departmentId) return res.status(400).json({ message: 'Missing id/departmentId' });
-    await repo.setDepartment(id, departmentId, req.tenantId || null);
+    const before = await repo.getUserById(id, req.tenantId || null);
+    if (!before) return res.status(404).json({ message: 'User not found' });
+    await deptChange.saveWithDepartmentChange({
+      before, toDepartmentId: departmentId, effectiveDate: (req.body || {}).departmentEffectiveDate,
+      actorId: req.user?.id || null, tenantId: req.tenantId || null,
+      save: () => repo.setDepartment(id, departmentId, req.tenantId || null)
+    });
     res.status(200).json({ id, departmentId });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(Number(err?.status || 500)).json({ message: err.message });
   }
 };
 // API: Cài đặt lại mật khẩu cho nhân viên (dành cho Admin)

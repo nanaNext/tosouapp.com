@@ -1,5 +1,6 @@
 const attendanceService = require('../attendance/attendance.service');
 const userRepo = require('../users/user.repository');
+const deptChange = require('../departments/department.change.service');
 const salaryService = require('../salary/salary.service');
 const refreshRepo = require('../auth/refresh.repository');
 const db = require('../../core/database/mysql');
@@ -95,7 +96,11 @@ exports.updateEmployeeInfo = async (req, res) => {
       return res.status(403).json({ message: 'Managers can only update employees' });
     }
     const b = req.body || {};
-    await userRepo.updateUser(targetId, {
+    // 部署を変えたときは異動履歴も自動で記録する
+    await deptChange.saveWithDepartmentChange({
+      before: target, toDepartmentId: b.departmentId, effectiveDate: b.departmentEffectiveDate,
+      actorId: req.user?.id || null, tenantId: req.tenantId || null,
+      save: () => userRepo.updateUser(targetId, {
       username: b.username,
       email: b.email,
       departmentId: b.departmentId ?? target.departmentId,
@@ -109,10 +114,11 @@ exports.updateEmployeeInfo = async (req, res) => {
       visaExpiry: b.visaExpiry,
       insuranceNumber: b.insuranceNumber,
       employmentStatus: b.employmentStatus
+    })
     });
     res.status(200).json({ id: targetId });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(Number(err?.status || 500)).json({ message: err.message });
   }
 };
 
@@ -247,7 +253,11 @@ exports.approveProfileChange = async (req, res) => {
     if (String(status).toLowerCase() === 'approved') {
       let fields = {};
       try { fields = JSON.parse(row.fields_json) || {}; } catch (e) { /* silently ignored */ }
-      await userRepo.updateUser(row.user_id, {
+      // 申請で部署が変わる場合は、承認した日を異動日として履歴に記録する
+      await deptChange.saveWithDepartmentChange({
+        before: target, toDepartmentId: fields.departmentId, effectiveDate: null,
+        actorId: req.user?.id || null, tenantId: req.tenantId || null,
+        save: () => userRepo.updateUser(row.user_id, {
         username: fields.username,
         email: fields.email,
         role: fields.role,
@@ -268,6 +278,7 @@ exports.approveProfileChange = async (req, res) => {
         baseSalary: fields.baseSalary,
         shiftId: fields.shiftId,
         joinDate: fields.joinDate
+      })
       });
       await db.query(`UPDATE user_change_requests SET status='approved', approved_by=?, approved_at=CURRENT_TIMESTAMP WHERE id=?`, [req.user.id, id]);
       return res.status(200).json({ id, status: 'approved' });
@@ -277,6 +288,6 @@ exports.approveProfileChange = async (req, res) => {
     }
     return res.status(400).json({ message: 'Invalid status' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(Number(err?.status || 500)).json({ message: err.message });
   }
 };
