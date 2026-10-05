@@ -1,5 +1,6 @@
 import { listCorporations, createCorporation, updateCorporation, deactivateCorporation } from '../../api/corporations.api.js';
 import { delegate, $ } from '../_shared/dom.js';
+import { toast } from './org-ui.js?v=20261005-org1';
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -14,37 +15,25 @@ export async function mount({ content } = {}) {
 
     const rowsHtml = corporations.map(c => `
       <tr>
-        <td>${c.id}</td>
-        <td><input class="dept-input dept-input-sm" data-corp-code="${c.id}" value="${escapeHtml(c.code || '')}" placeholder="例: A, B"></td>
-        <td><input class="dept-input" data-corp-name="${c.id}" value="${escapeHtml(c.name)}"></td>
-        <td>${c.is_active ? '<span style="color:#16a34a;">有効</span>' : '<span style="color:#94a3b8;">無効</span>'}</td>
-        <td>
-          <div class="dept-actions">
-            <button class="dept-btn" type="button" data-action="save" data-id="${c.id}">保存</button>
-            <button class="dept-btn danger" type="button" data-action="deactivate" data-id="${c.id}" ${c.is_active ? '' : 'disabled'}>無効化</button>
-          </div>
+        <td style="width:110px;"><input class="org-in" data-corp-code="${c.id}" value="${escapeHtml(c.code || '')}" placeholder="コード" style="width:90px;"></td>
+        <td><input class="org-in" data-corp-name="${c.id}" value="${escapeHtml(c.name)}" style="width:100%;max-width:320px;"></td>
+        <td style="width:70px;">${c.is_active ? '' : '<span class="org-tag off">無効</span>'}</td>
+        <td style="width:170px;text-align:right;white-space:nowrap;">
+          <button class="org-btn" type="button" data-action="save" data-id="${c.id}">保存</button>
+          <button class="org-btn danger" type="button" data-action="deactivate" data-id="${c.id}" ${c.is_active ? '' : 'disabled'}>無効化</button>
         </td>
       </tr>
     `).join('');
 
     root.innerHTML = `
-      <div class="dept-page">
-        <div class="dept-head">
-          <h3 class="dept-title">法人管理</h3>
-          <form id="corpCreateForm" class="dept-create">
-            <label class="dept-label" for="corpName">新規</label>
-            <input id="corpName" class="dept-input" placeholder="例: 株式会社〇〇建設">
-            <button type="submit" class="dept-btn primary">作成</button>
-          </form>
-        </div>
-        <p style="font-size:11px;color:#64748b;margin:0 0 10px;">1つの部署は必ず1つの法人に属します（部署タブで割り当ててください）。法人をまたぐ異動（転籍・出向）は別プロセスのため、ここでは扱いません。</p>
-        <div class="dept-table-wrap">
-          <table class="dept-table">
-            <thead><tr><th style="width:80px;">ID</th><th style="width:120px;">コード</th><th>法人名</th><th style="width:80px;">状態</th><th style="width:220px;">操作</th></tr></thead>
-            <tbody>${rowsHtml || '<tr><td colspan="5" style="padding:20px;text-align:center;color:#94a3b8;">法人がまだ登録されていません</td></tr>'}</tbody>
-          </table>
-        </div>
-      </div>
+      <table class="org-table">
+        <thead><tr><th>コード</th><th>法人名</th><th></th><th></th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="4" class="org-muted" style="text-align:center;padding:16px;">法人がまだ登録されていません</td></tr>'}</tbody>
+      </table>
+      <form id="corpCreateForm" style="display:flex;gap:8px;align-items:center;padding:10px 14px;border-top:1px solid #f1f5f9;">
+        <input id="corpName" class="org-in" placeholder="新しい法人名（例: 株式会社〇〇建設）" style="width:280px;">
+        <button type="submit" class="org-btn primary">法人を追加</button>
+      </form>
     `;
 
     // フォームは render() のたびに DOM ごと作り直されるので、ここで毎回 bind し直しても問題ない。
@@ -79,7 +68,7 @@ export async function mount({ content } = {}) {
       }
       try {
         await updateCorporation(id, { name, code });
-        alert('保存しました');
+        toast('保存しました');
         await render();
       } catch (err) {
         alert(`保存に失敗しました: ${err.message}`);

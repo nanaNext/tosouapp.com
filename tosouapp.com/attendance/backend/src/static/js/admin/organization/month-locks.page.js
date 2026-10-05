@@ -36,7 +36,7 @@ export async function mount({ content } = {}) {
       const isFuture = monthKey >= nowKey;
       let actionHtml;
       if (isClosed) {
-        actionHtml = `<button type="button" data-action="reopen" data-year="${year}" data-month="${month}" style="color:#b45309;cursor:pointer;">再オープン</button>`;
+        actionHtml = `<button type="button" data-action="reopen" data-year="${year}" data-month="${month}" style="color:#b45309;cursor:pointer;">締めを解除</button>`;
       } else if (isNextClosable) {
         actionHtml = `<button type="button" data-action="close" data-year="${year}" data-month="${month}" style="color:#0b2c66;font-weight:600;cursor:pointer;">締める</button>`;
       } else if (isFuture) {
@@ -56,9 +56,8 @@ export async function mount({ content } = {}) {
     root.innerHTML = `
       <div style="padding:0 20px 24px;max-width:900px;">
         <div style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e3a5f;line-height:1.6;">
-          締められるのは月末を過ぎた月だけで、古い月から順に締めます。<br>
-          再オープンできるのはシステム管理者のみで、理由の入力が必須です。ある月を再オープンすると、それより後に締めている月も一緒に再オープンされます（締め済みの月が常に連続するようにするため）。<br>
-          締め・再オープンは変更履歴に残ります。
+          ※ 勤怠の「月次締め」（勤怠台帳）とは別のものです。ここで締めた月には、さかのぼって部署の変更（異動）を登録・変更できなくなります。<br>
+          月末を過ぎた月を、古い月から順に締めます。締めの解除はシステム管理者のみ（理由が必要）で、それより後の月も一緒に解除されます。
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="background:#f1f5f9;"><th style="padding:8px;text-align:left;">対象月</th><th style="padding:8px;text-align:left;">状態</th><th style="padding:8px;text-align:left;">操作</th></tr></thead>
@@ -87,15 +86,15 @@ export async function mount({ content } = {}) {
         const month = Number(btn.dataset.month);
         const laterClosed = locks.filter(l => l.status === 'closed' && (l.year * 12 + l.month) > (year * 12 + month));
         const warn = laterClosed.length
-          ? `\n※ これより後の締め済み月も同時に再オープンされます: ${laterClosed.map(l => ymLabel(l.year, l.month)).join('、 ')}`
+          ? `\n※ これより後の締め済み月も同時に解除されます: ${laterClosed.map(l => ymLabel(l.year, l.month)).join('、 ')}`
           : '';
-        const reason = prompt(`${ymLabel(year, month)}を再オープンする理由を入力してください。${warn}`);
+        const reason = prompt(`${ymLabel(year, month)}の締めを解除する理由を入力してください。${warn}`);
         if (!reason || !reason.trim()) return;
         try {
           await reopenMonth({ year, month, reason: reason.trim() });
           await render();
         } catch (err) {
-          alert(`再オープンできませんでした: ${err.message}`);
+          alert(`解除できませんでした: ${err.message}`);
         }
       });
     });
