@@ -1131,7 +1131,8 @@ const load = async (date, opts = {}) => {
   if (useSpinner) showSpinner(true);
   
   // Set document as loading so CSS hides content initially
-  document.body.classList.add('is-loading');
+  // (保存後の裏での再読み込み = silent のときは画面を消さない)
+  if (!opts?.silent) document.body.classList.add('is-loading');
 
   try {
     $('#topDate').textContent = fmtJP(date);
@@ -1690,10 +1691,14 @@ const tryCheckOut = async () => {
       break_minutes: Number($('#breakMin')?.value || 60),
       night_break_minutes: Number($('#nightBreakMin')?.value || 0)
     };
-    await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
+    // daily の保存と、打刻（segment）の取得はお互いに関係ないので同時に行う（待ち時間を1回分減らす）
+    const [, day] = await Promise.all([
+      fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}/daily`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      }),
+      fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`)
+    ]);
     
     // Đánh dấu đã lưu thành công
     markAsSaved();
@@ -1702,7 +1707,6 @@ const tryCheckOut = async () => {
       clearDraft(date);
     }
 
-    const day = await fetchJSONAuth(`/api/attendance/date/${encodeURIComponent(date)}`);
     const missingCheckInSeg = day?.segments?.find(s => s.is_anomaly === 1 && s.anomaly_type === 'missing_checkin');
     let seg = pickFirstSegment(day?.segments);
     if (missingCheckInSeg) seg = missingCheckInSeg;
@@ -1777,8 +1781,6 @@ const tryCheckOut = async () => {
       }
     }
     
-    // Đợi 1 chút cho API ghi xong rồi mới return để load()
-    await new Promise(r => setTimeout(r, 200));
     return true;
   } catch (e) {
     showErr(e?.message || '登録に失敗しました');
@@ -2058,61 +2060,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const et = $('#endTime');
       const st = $('#startTime');
       
-      const saved = await save(state.date);
-      // Wait for save to fully finish and update DB before calling report
-      const rep = await saveWorkReportIfPossible(state.date);
-      
-      // Lấy dữ liệu dự phòng trước khi load đè
-    const fallbackMemo = document.querySelector('#memo')?.dataset?.savedValue;
-    const fallbackOut = et ? et.value : null;
-    const fallbackIn = st ? st.value : null;
-    
-    // Reload UI completely to show saved notes
-    await load(state.date, { spinner: false });
-    
-    // Khôi phục lại giá trị nếu load() làm mất (race condition chống trả về rỗng)
-    if (et && fallbackOut && !et.value) {
-      et.value = fallbackOut;
-      et.dataset.actual = fallbackOut;
-    }
-    if (st && fallbackIn && !st.value) {
-      st.value = fallbackIn;
-      st.dataset.actual = fallbackIn;
-    }
-    
-    // Khôi phục lại giá trị memo CHẮC CHẮN nếu load() làm mất
-      const memoEl = document.querySelector('#memo');
-      if (memoEl && fallbackMemo) {
-         memoEl.value = fallbackMemo;
-      }
-      
-      if (saved) {
-        showToast('保存しました');
-        if (rep?.saved && rep?.report?.id) showToast(`作業報告も保存しました (id=${rep.report.id})`, 'success');
-        else if (rep?.attempted && !rep?.saved && rep?.message) showErr(rep.message);
-        
-        if (btn) {
-          btn.innerHTML = '保存成功';
-          btn.style.background = '#10b981';
-          btn.style.borderColor = '#10b981';
-          btn.style.color = '#fff';
-          showSpinner(true, true);
-          setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.style.background = '';
-            btn.style.borderColor = '';
-            btn.style.color = '';
-            btn.disabled = false;
-            btn.dataset.saving = '0';
-            showSpinner(false);
-          }, 1500);
-        } else {
-          showSpinner(true, true);
-          setTimeout(() => {
-            showSpinner(false);
-          }, 1500);
-        }
-      } else {
+      // 勤怠と作業報告は別のデータなので同時に保存する
+      const [saved, rep] = await Promise.all([
+        save(state.date),
+        saveWorkReportIfPossible(state.date)
+      ]);
+
+      if (!saved) {
         showToast('保存に失敗しました', 'error');
         if (btn) {
           btn.innerHTML = originalText;
@@ -2120,7 +2074,43 @@ document.addEventListener('DOMContentLoaded', async () => {
           btn.dataset.saving = '0';
         }
         showSpinner(false);
+        return;
       }
+
+      // 保存できたらすぐ知らせる（以前はここで画面の再読み込みと1.5秒の演出を待っていた）
+      showToast('保存しました');
+      if (rep?.saved && rep?.report?.id) showToast(`作業報告も保存しました (id=${rep.report.id})`, 'success');
+      else if (rep?.attempted && !rep?.saved && rep?.message) showErr(rep.message);
+      showSpinner(true, true);
+      setTimeout(() => showSpinner(false), 600);
+      if (btn) {
+        btn.innerHTML = '保存成功';
+        btn.style.background = '#10b981';
+        btn.style.borderColor = '#10b981';
+        btn.style.color = '#fff';
+      }
+
+      // 画面の内容は裏で最新に更新する（画面は消さない）
+      const fallbackMemo = document.querySelector('#memo')?.dataset?.savedValue;
+      const fallbackOut = et ? et.value : null;
+      const fallbackIn = st ? st.value : null;
+      load(state.date, { spinner: false, silent: true }).catch(() => {}).finally(() => {
+        // load() が値を空にしてしまった場合の保険（以前と同じ）
+        if (et && fallbackOut && !et.value) { et.value = fallbackOut; et.dataset.actual = fallbackOut; }
+        if (st && fallbackIn && !st.value) { st.value = fallbackIn; st.dataset.actual = fallbackIn; }
+        const memoEl = document.querySelector('#memo');
+        if (memoEl && fallbackMemo) memoEl.value = fallbackMemo;
+        if (btn) {
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+            btn.disabled = false;
+            btn.dataset.saving = '0';
+          }, 800);
+        }
+      });
     } catch (err) {
       showToast(String(err?.message || '保存に失敗しました'), 'error');
       if (btn) {
